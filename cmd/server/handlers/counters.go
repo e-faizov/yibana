@@ -8,14 +8,19 @@ import (
 )
 
 func (m *MetricsHandlers) Counters(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "wrong method", http.StatusBadRequest)
+		return
+	}
+
 	paths := strings.Split(r.URL.Path, "/")
-	if len(paths) != 4 {
+	if len(paths) != 5 {
 		http.Error(w, "wrong path", http.StatusBadRequest)
 		return
 	}
 
-	name := paths[2]
-	val, err := strconv.ParseInt(paths[3], 10, 64)
+	name := paths[3]
+	val, err := strconv.ParseInt(paths[4], 10, 64)
 	if err != nil {
 		http.Error(w, "wrong value", http.StatusBadRequest)
 		return
