@@ -161,22 +161,21 @@ func (s *Sender) SendMetrics(m Metrics) error {
 
 func (s *Sender) SendGauge(gauge NamedGauge) error {
 	url := fmt.Sprintf("http://%s:%d/update/gauge/%s/%f", s.adr, s.port, gauge.Name, gauge.Value)
-
-	_, err := http.Post(url, "text/plain", nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.send(url)
 }
 
 func (s *Sender) SendCounter(counter NamedCounter) error {
 	url := fmt.Sprintf("http://%s:%d/update/counter/%s/%d", s.adr, s.port, counter.Name, counter.Value)
+	return s.send(url)
+}
 
-	_, err := http.Post(url, "text/plain", nil)
+func (s *Sender) send(url string) error {
+	resp, err := http.Post(url, "text/plain", nil)
 	if err != nil {
 		return err
 	}
+
+	resp.Body.Close()
 
 	return nil
 }
