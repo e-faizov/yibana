@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
-	"github.com/e-faizov/yibana/cmd/server/handlers"
-	"github.com/e-faizov/yibana/cmd/server/storage"
+	"github.com/e-faizov/yibana/internal/handlers"
+	"github.com/e-faizov/yibana/internal/storage"
 	"net/http"
 )
 

@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/e-faizov/yibana/cmd/server/interfaces"
 	"github.com/e-faizov/yibana/internal"
+	"github.com/e-faizov/yibana/internal/interfaces"
 	"sync"
 )
 

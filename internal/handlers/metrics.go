@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/e-faizov/yibana/cmd/server/interfaces"
+	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
 type MetricsHandlers struct {

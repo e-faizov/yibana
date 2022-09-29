@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/e-faizov/yibana/cmd/server/server"
+	"github.com/e-faizov/yibana/internal/server"
 )
 
 func main() {
