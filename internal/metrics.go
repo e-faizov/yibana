@@ -5,9 +5,6 @@ import (
 	"runtime"
 )
 
-type Gauge float64
-type Counter int64
-
 type NamedGauge struct {
 	Name  string
 	Value Gauge
