@@ -28,7 +28,7 @@ func initStore() storeImpl {
 
 func (s *storeImpl) SetGauge(name string, val internal.Gauge) error {
 	s.gaugesMtx.Lock()
-	defer s.countersMtx.Unlock()
+	defer s.gaugesMtx.Unlock()
 	s.gauges[name] = val
 	return nil
 }

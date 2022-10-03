@@ -71,7 +71,7 @@ func TestMetricsHandlers_Counters(t *testing.T) {
 			name:    "without value",
 			request: "/update/counter/test",
 			want: want{
-				statusCode: http.StatusBadRequest,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}

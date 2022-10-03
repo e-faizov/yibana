@@ -55,7 +55,7 @@ func TestMetricsHandlers_Gauges(t *testing.T) {
 			name:    "without value",
 			request: "/update/gauge/test",
 			want: want{
-				statusCode: http.StatusBadRequest,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}

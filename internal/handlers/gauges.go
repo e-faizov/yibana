@@ -15,7 +15,7 @@ func (m *MetricsHandlers) Gauges(w http.ResponseWriter, r *http.Request) {
 
 	paths := strings.Split(r.URL.Path, "/")
 	if len(paths) != 5 {
-		http.Error(w, "wrong path", http.StatusBadRequest)
+		http.Error(w, "wrong path", http.StatusNotFound)
 		return
 	}
 
