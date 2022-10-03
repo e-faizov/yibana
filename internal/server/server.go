@@ -16,7 +16,8 @@ func StartServer(adr string, port int64) error {
 	}
 
 	r := chi.NewRouter()
-	r.Post("/update/{type}/{name}/{value}", h.Handler)
+	r.Post("/update/{type}/{name}/{value}", h.PostHandler)
+	r.Post("/value/{type}/{name}", h.GetHandler)
 
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", adr, port), r)
 }
