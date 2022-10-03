@@ -57,7 +57,7 @@ func (m *MetricsHandlers) GetHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		w.Write([]byte(fmt.Sprintf("%f", res)))
+		w.Write([]byte(fmt.Sprintf("%.3f", res)))
 		return
 
 	} else if tp == "counter" {
