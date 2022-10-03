@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"github.com/e-faizov/yibana/internal"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -78,9 +80,11 @@ func TestMetricsHandlers_Counters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, nil)
+			request = request.WithContext(context.Background())
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(h.Handler)
-			h.ServeHTTP(w, request)
+			testHanle := chi.NewRouter()
+			testHanle.Post("/update/{type}/{name}/{value}", h.Handler)
+			testHanle.ServeHTTP(w, request)
 			result := w.Result()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
@@ -148,9 +152,11 @@ func TestMetricsHandlers_Gauges(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, nil)
+			request = request.WithContext(context.Background())
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(h.Handler)
-			h.ServeHTTP(w, request)
+			testHanle := chi.NewRouter()
+			testHanle.Post("/update/{type}/{name}/{value}", h.Handler)
+			testHanle.ServeHTTP(w, request)
 			result := w.Result()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)

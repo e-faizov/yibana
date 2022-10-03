@@ -2,28 +2,20 @@ package handlers
 
 import (
 	"github.com/e-faizov/yibana/internal"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 func (m *MetricsHandlers) Handler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "wrong method", http.StatusMethodNotAllowed)
-		return
-	}
 
-	paths := strings.Split(r.URL.Path, "/")
-	if len(paths) != 5 {
-		http.Error(w, "wrong path", http.StatusNotFound)
-		return
-	}
-
-	tp := strings.ToLower(paths[2])
-	name := paths[3]
+	tp := strings.ToLower(chi.URLParam(r, "type"))
+	name := chi.URLParam(r, "name")
+	value := chi.URLParam(r, "value")
 
 	if tp == "gauge" {
-		val, err := strconv.ParseFloat(paths[4], 64)
+		val, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			http.Error(w, "wrong value", http.StatusBadRequest)
 			return
@@ -37,7 +29,7 @@ func (m *MetricsHandlers) Handler(w http.ResponseWriter, r *http.Request) {
 
 		return
 	} else if tp == "counter" {
-		val, err := strconv.ParseInt(paths[4], 10, 64)
+		val, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			http.Error(w, "wrong value", http.StatusBadRequest)
 			return
