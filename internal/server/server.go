@@ -14,7 +14,6 @@ func StartServer(adr string, port int64) error {
 		Store: store,
 	}
 
-	http.HandleFunc("/update/gauge/", h.Gauges)
-	http.HandleFunc("/update/counter/", h.Counters)
+	http.HandleFunc("/update/", h.Handler)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", adr, port), nil)
 }
