@@ -8,7 +8,6 @@ import (
 )
 
 func StartServer(adr string, port int64) error {
-
 	store := storage.NewStore()
 
 	h := handlers.MetricsHandlers{

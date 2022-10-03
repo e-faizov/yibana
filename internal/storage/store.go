@@ -7,10 +7,8 @@ import (
 )
 
 func NewStore() interfaces.Store {
-	return &storeImpl{
-		gauges:   map[string]internal.Gauge{},
-		counters: map[string]internal.Counter{},
-	}
+	store := initStore()
+	return &store
 }
 
 type storeImpl struct {
@@ -19,6 +17,13 @@ type storeImpl struct {
 
 	countersMtx sync.RWMutex
 	counters    map[string]internal.Counter
+}
+
+func initStore() storeImpl {
+	return storeImpl{
+		gauges:   map[string]internal.Gauge{},
+		counters: map[string]internal.Counter{},
+	}
 }
 
 func (s *storeImpl) SetGauge(name string, val internal.Gauge) error {
