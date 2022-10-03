@@ -36,7 +36,7 @@ func (m *MetricsHandlers) PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = m.Store.SetCounter(name, internal.Counter(val))
+		err = m.Store.AddCounter(name, internal.Counter(val))
 		if err != nil {
 			http.Error(w, "error on save value", http.StatusBadRequest)
 			return

@@ -35,10 +35,11 @@ func (s *storeImpl) SetGauge(name string, val internal.Gauge) error {
 	s.gauges[name] = val
 	return nil
 }
-func (s *storeImpl) SetCounter(name string, val internal.Counter) error {
+func (s *storeImpl) AddCounter(name string, val internal.Counter) error {
 	s.countersMtx.Lock()
 	defer s.countersMtx.Unlock()
-	s.counters[name] = val
+	v := s.counters[name]
+	s.counters[name] = v + val
 	return nil
 }
 

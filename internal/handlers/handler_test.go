@@ -25,7 +25,7 @@ func (s *storeTest) SetGauge(name string, val internal.Gauge) error {
 	s.gauge = val
 	return nil
 }
-func (s *storeTest) SetCounter(name string, val internal.Counter) error {
+func (s *storeTest) AddCounter(name string, val internal.Counter) error {
 	s.counterName = name
 	s.counter = val
 	return nil
@@ -118,7 +118,7 @@ func TestMetricsHandlers_PostCounters(t *testing.T) {
 func TestMetricsHandlers_GetCounters(t *testing.T) {
 	store := storeTest{}
 
-	store.SetCounter("testCounter", 3534)
+	store.AddCounter("testCounter", 3534)
 
 	type want struct {
 		statusCode int
@@ -269,7 +269,7 @@ func TestMetricsHandlers_GetGauges(t *testing.T) {
 			request: "/value/gauge/testGauges",
 			want: want{
 				statusCode: http.StatusOK,
-				value:      "3746.000000",
+				value:      "3746.000",
 			},
 		},
 		{
