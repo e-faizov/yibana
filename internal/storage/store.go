@@ -2,14 +2,17 @@ package storage
 
 import (
 	"errors"
+	"sync"
+
 	"github.com/e-faizov/yibana/internal"
 	"github.com/e-faizov/yibana/internal/interfaces"
-	"sync"
 )
 
 func NewStore() interfaces.Store {
-	store := initStore()
-	return &store
+	return &storeImpl{
+		gauges:   map[string]internal.Gauge{},
+		counters: map[string]internal.Counter{},
+	}
 }
 
 type storeImpl struct {
@@ -18,13 +21,6 @@ type storeImpl struct {
 
 	countersMtx sync.RWMutex
 	counters    map[string]internal.Counter
-}
-
-func initStore() storeImpl {
-	return storeImpl{
-		gauges:   map[string]internal.Gauge{},
-		counters: map[string]internal.Counter{},
-	}
 }
 
 var errNotFound = errors.New("not found")
@@ -43,22 +39,16 @@ func (s *storeImpl) AddCounter(name string, val internal.Counter) error {
 	return nil
 }
 
-func (s *storeImpl) GetGauge(name string) (internal.Gauge, error) {
+func (s *storeImpl) GetGauge(name string) (internal.Gauge, bool) {
 	s.gaugesMtx.Lock()
 	defer s.gaugesMtx.Unlock()
 	v, ok := s.gauges[name]
-	if !ok {
-		return internal.Gauge(0), errNotFound
-	}
-	return v, nil
+	return v, ok
 }
 
-func (s *storeImpl) GetCounter(name string) (internal.Counter, error) {
+func (s *storeImpl) GetCounter(name string) (internal.Counter, bool) {
 	s.countersMtx.Lock()
 	defer s.countersMtx.Unlock()
 	v, ok := s.counters[name]
-	if !ok {
-		return internal.Counter(0), errNotFound
-	}
-	return v, nil
+	return v, ok
 }

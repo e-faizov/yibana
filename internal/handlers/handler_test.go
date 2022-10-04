@@ -2,15 +2,15 @@ package handlers
 
 import (
 	"context"
-	"errors"
-	"github.com/e-faizov/yibana/internal"
-	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/e-faizov/yibana/internal"
+	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type storeTest struct {
@@ -31,18 +31,18 @@ func (s *storeTest) AddCounter(name string, val internal.Counter) error {
 	return nil
 }
 
-func (s *storeTest) GetGauge(name string) (internal.Gauge, error) {
+func (s *storeTest) GetGauge(name string) (internal.Gauge, bool) {
 	if name != s.gaugeName {
-		return internal.Gauge(1), errors.New("not found")
+		return internal.Gauge(1), false
 	}
-	return s.gauge, nil
+	return s.gauge, true
 }
 
-func (s *storeTest) GetCounter(name string) (internal.Counter, error) {
+func (s *storeTest) GetCounter(name string) (internal.Counter, bool) {
 	if name != s.counterName {
-		return internal.Counter(1), errors.New("not found")
+		return internal.Counter(1), false
 	}
-	return s.counter, nil
+	return s.counter, true
 }
 
 func TestMetricsHandlers_PostCounters(t *testing.T) {

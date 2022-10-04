@@ -2,10 +2,12 @@ package server
 
 import (
 	"fmt"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+
 	"github.com/e-faizov/yibana/internal/handlers"
 	"github.com/e-faizov/yibana/internal/storage"
-	"github.com/go-chi/chi/v5"
-	"net/http"
 )
 
 func StartServer(adr string, port int64) error {

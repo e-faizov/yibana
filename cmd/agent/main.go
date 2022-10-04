@@ -1,8 +1,10 @@
 package main
 
 import (
-	"github.com/e-faizov/yibana/internal"
+	"fmt"
 	"time"
+
+	"github.com/e-faizov/yibana/internal"
 )
 
 const pollInterval = 2
@@ -10,21 +12,33 @@ const reportInterval = 10
 
 func main() {
 
-	ticker := time.NewTicker(1 * time.Second)
-	metrics := internal.NewMetrics()
-	sender := internal.NewSender("127.0.0.1", 8080)
+	pollTicker := time.NewTicker(pollInterval)
+	reportTicker := time.NewTicker(reportInterval)
+
+	metrics := internal.Metrics{}
 	metrics.Update()
 
-	var tickCount int64
-	for range ticker.C {
-		tickCount++
+	sender := internal.NewSender("", 8080)
 
-		if tickCount%pollInterval == 0 {
+	go func() {
+		for range pollTicker.C {
 			metrics.Update()
-			if tickCount%reportInterval == 0 {
-				sender.SendMetrics(metrics)
+		}
+	}()
+
+	for range reportTicker.C {
+		for {
+			next, ok := metrics.Front()
+			if !ok {
+				break
 			}
+			err := sender.SendMetric(next)
+			if err != nil {
+				fmt.Println("Ошибка отправки, попробуем в следующий раз")
+			} else {
+				metrics.Pop()
+			}
+
 		}
 	}
-
 }

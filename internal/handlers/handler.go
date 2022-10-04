@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/e-faizov/yibana/internal"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/e-faizov/yibana/internal"
 )
 
 func (m *MetricsHandlers) PostHandler(w http.ResponseWriter, r *http.Request) {
@@ -52,8 +54,8 @@ func (m *MetricsHandlers) GetHandler(w http.ResponseWriter, r *http.Request) {
 	tp := strings.ToLower(chi.URLParam(r, "type"))
 	name := chi.URLParam(r, "name")
 	if tp == "gauge" {
-		res, err := m.Store.GetGauge(name)
-		if err != nil {
+		res, ok := m.Store.GetGauge(name)
+		if !ok {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -61,8 +63,8 @@ func (m *MetricsHandlers) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 
 	} else if tp == "counter" {
-		res, err := m.Store.GetCounter(name)
-		if err != nil {
+		res, ok := m.Store.GetCounter(name)
+		if !ok {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

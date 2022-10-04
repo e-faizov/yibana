@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
+	"sync"
 )
 
 type NamedGauge struct {
@@ -15,112 +17,122 @@ type NamedCounter struct {
 	Value Counter
 }
 
+type Metric struct {
+	Name string
+	g    *Gauge
+	c    *Counter
+	t    string
+}
+
+func (m *Metric) SetGauge(g Gauge) {
+	m.g = &g
+	m.c = nil
+	m.t = "gauge"
+}
+
+func (m *Metric) SetCounter(c Counter) {
+	m.g = nil
+	m.c = &c
+	m.t = "counter"
+}
+
+func (m *Metric) GetType() string {
+	return m.t
+}
+
+func (m *Metric) ToString() string {
+	if m.g != nil {
+		return fmt.Sprintf("%.3f", *m.g)
+	} else if m.c != nil {
+		return fmt.Sprintf("%d", *m.c)
+	}
+	return ""
+}
+
 type Metrics struct {
-	Alloc         NamedGauge
-	BuckHashSys   NamedGauge
-	Frees         NamedGauge
-	GCCPUFraction NamedGauge
-	GCSys         NamedGauge
-	HeapAlloc     NamedGauge
-	HeapIdle      NamedGauge
-	HeapInuse     NamedGauge
-	HeapObjects   NamedGauge
-	HeapReleased  NamedGauge
-	HeapSys       NamedGauge
-	LastGC        NamedGauge
-	Lookups       NamedGauge
-	MCacheInuse   NamedGauge
-	MCacheSys     NamedGauge
-	MSpanInuse    NamedGauge
-	MSpanSys      NamedGauge
-	Mallocs       NamedGauge
-	NextGC        NamedGauge
-	NumForcedGC   NamedGauge
-	NumGC         NamedGauge
-	OtherSys      NamedGauge
-	PauseTotalNs  NamedGauge
-	StackInuse    NamedGauge
-	StackSys      NamedGauge
-	Sys           NamedGauge
-	TotalAlloc    NamedGauge
-	PollCount     NamedCounter
-	RandomValue   NamedGauge
+	mtx          sync.Mutex
+	data         []Metric
+	currentCount Counter
 }
 
 func (m *Metrics) Update() {
-	m.PollCount.Value++
-	m.RandomValue.Value = Gauge(rand.Float64())
+
+	m.currentCount++
+	var tmp []Metric
 
 	var rtm runtime.MemStats
 	runtime.ReadMemStats(&rtm)
 
-	m.Alloc.Value = Gauge(rtm.Alloc)
+	addGauge := func(nm string, v Gauge) {
+		tmpMetric := Metric{
+			Name: nm,
+		}
+		tmpMetric.SetGauge(v)
+		tmp = append(tmp, tmpMetric)
+	}
 
-	m.BuckHashSys.Value = Gauge(rtm.BuckHashSys)
-	m.Frees.Value = Gauge(rtm.Frees)
-	m.GCCPUFraction.Value = Gauge(rtm.GCCPUFraction)
-	m.GCSys.Value = Gauge(rtm.GCSys)
-	m.HeapAlloc.Value = Gauge(rtm.HeapAlloc)
-	m.HeapIdle.Value = Gauge(rtm.HeapIdle)
-	m.HeapInuse.Value = Gauge(rtm.HeapInuse)
-	m.HeapObjects.Value = Gauge(rtm.HeapObjects)
-	m.HeapReleased.Value = Gauge(rtm.HeapReleased)
-	m.HeapSys.Value = Gauge(rtm.HeapSys)
-	m.LastGC.Value = Gauge(rtm.LastGC)
-	m.Lookups.Value = Gauge(rtm.Lookups)
-	m.MCacheInuse.Value = Gauge(rtm.MCacheInuse)
-	m.MCacheSys.Value = Gauge(rtm.MCacheSys)
-	m.MSpanInuse.Value = Gauge(rtm.MSpanInuse)
-	m.MSpanSys.Value = Gauge(rtm.MSpanSys)
-	m.Mallocs.Value = Gauge(rtm.Mallocs)
-	m.NextGC.Value = Gauge(rtm.NextGC)
-	m.NumForcedGC.Value = Gauge(rtm.NumForcedGC)
-	m.NumGC.Value = Gauge(rtm.NumGC)
-	m.OtherSys.Value = Gauge(rtm.OtherSys)
-	m.PauseTotalNs.Value = Gauge(rtm.PauseTotalNs)
-	m.StackInuse.Value = Gauge(rtm.StackInuse)
-	m.StackSys.Value = Gauge(rtm.StackSys)
-	m.Sys.Value = Gauge(rtm.Sys)
-	m.TotalAlloc.Value = Gauge(rtm.TotalAlloc)
+	addGauge("alloc", Gauge(rtm.Alloc))
+	addGauge("BuckHashSys", Gauge(rtm.BuckHashSys))
+	addGauge("Frees", Gauge(rtm.Frees))
+	addGauge("GCCPUFraction", Gauge(rtm.GCCPUFraction))
+
+	addGauge("GCSys", Gauge(rtm.GCSys))
+	addGauge("HeapAlloc", Gauge(rtm.HeapAlloc))
+	addGauge("HeapIdle", Gauge(rtm.HeapIdle))
+	addGauge("HeapInuse", Gauge(rtm.HeapInuse))
+
+	addGauge("HeapObjects", Gauge(rtm.HeapObjects))
+	addGauge("HeapReleased", Gauge(rtm.HeapReleased))
+	addGauge("HeapSys", Gauge(rtm.HeapSys))
+	addGauge("LastGC", Gauge(rtm.LastGC))
+
+	addGauge("Lookups", Gauge(rtm.Lookups))
+	addGauge("MCacheInuse", Gauge(rtm.MCacheInuse))
+	addGauge("MCacheSys", Gauge(rtm.MCacheSys))
+	addGauge("MSpanInuse", Gauge(rtm.MSpanInuse))
+
+	addGauge("MSpanSys", Gauge(rtm.MSpanSys))
+	addGauge("Mallocs", Gauge(rtm.Mallocs))
+	addGauge("NextGC", Gauge(rtm.NextGC))
+	addGauge("NumForcedGC", Gauge(rtm.NumForcedGC))
+
+	addGauge("NumGC", Gauge(rtm.NumGC))
+	addGauge("OtherSys", Gauge(rtm.OtherSys))
+	addGauge("PauseTotalNs", Gauge(rtm.PauseTotalNs))
+	addGauge("StackInuse", Gauge(rtm.StackInuse))
+
+	addGauge("StackSys", Gauge(rtm.StackSys))
+	addGauge("Sys", Gauge(rtm.Sys))
+	addGauge("TotalAlloc", Gauge(rtm.TotalAlloc))
+	addGauge("RandomValue", Gauge(rand.Float64()))
+
+	tmpMetric := Metric{
+		Name: "PollCount",
+	}
+	tmpMetric.SetCounter(m.currentCount)
+	tmp = append(tmp, tmpMetric)
+
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	m.data = append(m.data, tmp...)
 }
 
-func NewMetrics() Metrics {
-	res := initMetrics()
-	return res
+func (m *Metrics) Front() (Metric, bool) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	if len(m.data) == 0 {
+		return Metric{}, false
+	}
+	return m.data[0], true
 }
 
-func initMetrics() Metrics {
-	var res Metrics
+func (m *Metrics) Pop() {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 
-	res.Alloc = NamedGauge{Name: "alloc"}
-	res.BuckHashSys = NamedGauge{Name: "BuckHashSys"}
-	res.Frees = NamedGauge{Name: "Frees"}
-	res.GCCPUFraction = NamedGauge{Name: "GCCPUFraction"}
-	res.GCSys = NamedGauge{Name: "GCSys"}
-	res.HeapAlloc = NamedGauge{Name: "HeapAlloc"}
-	res.HeapIdle = NamedGauge{Name: "HeapIdle"}
-	res.HeapInuse = NamedGauge{Name: "HeapInuse"}
-	res.HeapObjects = NamedGauge{Name: "HeapObjects"}
-	res.HeapReleased = NamedGauge{Name: "HeapReleased"}
-	res.HeapSys = NamedGauge{Name: "HeapSys"}
-	res.LastGC = NamedGauge{Name: "LastGC"}
-	res.Lookups = NamedGauge{Name: "Lookups"}
-	res.MCacheInuse = NamedGauge{Name: "MCacheInuse"}
-	res.MCacheSys = NamedGauge{Name: "MCacheSys"}
-	res.MSpanInuse = NamedGauge{Name: "MSpanInuse"}
-	res.MSpanSys = NamedGauge{Name: "MSpanSys"}
-	res.Mallocs = NamedGauge{Name: "Mallocs"}
-	res.NextGC = NamedGauge{Name: "NextGC"}
-	res.NumForcedGC = NamedGauge{Name: "NumForcedGC"}
-	res.NumGC = NamedGauge{Name: "NumGC"}
-	res.OtherSys = NamedGauge{Name: "OtherSys"}
-	res.PauseTotalNs = NamedGauge{Name: "PauseTotalNs"}
-	res.StackInuse = NamedGauge{Name: "StackInuse"}
-	res.StackSys = NamedGauge{Name: "StackSys"}
-	res.Sys = NamedGauge{Name: "Sys"}
-	res.TotalAlloc = NamedGauge{Name: "TotalAlloc"}
-	res.PollCount = NamedCounter{Name: "PollCount"}
-	res.RandomValue = NamedGauge{Name: "RandomValue"}
-
-	return res
+	if len(m.data) != 0 {
+		m.data = m.data[1:]
+	}
 }
