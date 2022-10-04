@@ -12,8 +12,8 @@ const reportInterval = 10
 
 func main() {
 
-	pollTicker := time.NewTicker(pollInterval)
-	reportTicker := time.NewTicker(reportInterval)
+	pollTicker := time.NewTicker(pollInterval * time.Second)
+	reportTicker := time.NewTicker(reportInterval * time.Second)
 
 	metrics := internal.Metrics{}
 	metrics.Update()
@@ -32,6 +32,7 @@ func main() {
 			if !ok {
 				break
 			}
+			
 			err := sender.SendMetric(next)
 			if err != nil {
 				fmt.Println("Ошибка отправки, попробуем в следующий раз")

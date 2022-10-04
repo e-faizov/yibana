@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -11,11 +12,10 @@ type Sender struct {
 }
 
 func (s *Sender) SendMetric(m Metric) error {
-	s.Send(m.GetType(), m.Name, m.ToString())
-	return nil
+	return s.sendData(m.GetType(), m.Name, m.ToString())
 }
 
-func (s *Sender) Send(tp, name, val string) error {
+func (s *Sender) sendData(tp, name, val string) error {
 	url := fmt.Sprintf("http://%s:%d/update/%s/%s/%s", s.adr, s.port, tp, name, val)
 	return s.send(url)
 }
@@ -25,8 +25,11 @@ func (s *Sender) send(url string) error {
 	if err != nil {
 		return err
 	}
-
 	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("status code not 200")
+	}
 
 	return nil
 }
