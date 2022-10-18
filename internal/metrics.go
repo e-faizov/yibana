@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"math/rand"
 	"runtime"
 	"sync"
@@ -18,35 +17,22 @@ type NamedCounter struct {
 }
 
 type Metric struct {
-	Name string
-	g    *Gauge
-	c    *Counter
-	t    string
+	ID    string   `json:"id"`
+	MType string   `json:"type"`
+	Delta *Counter `json:"delta,omitempty"`
+	Value *Gauge   `json:"value,omitempty"`
 }
 
 func (m *Metric) SetGauge(g Gauge) {
-	m.g = &g
-	m.c = nil
-	m.t = "gauge"
+	m.Value = &g
+	m.Delta = nil
+	m.MType = "gauge"
 }
 
 func (m *Metric) SetCounter(c Counter) {
-	m.g = nil
-	m.c = &c
-	m.t = "counter"
-}
-
-func (m *Metric) GetType() string {
-	return m.t
-}
-
-func (m *Metric) ToString() string {
-	if m.g != nil {
-		return fmt.Sprintf("%.3f", *m.g)
-	} else if m.c != nil {
-		return fmt.Sprintf("%d", *m.c)
-	}
-	return ""
+	m.Value = nil
+	m.Delta = &c
+	m.MType = "counter"
 }
 
 type Metrics struct {
@@ -65,7 +51,7 @@ func (m *Metrics) Update() {
 
 	addGauge := func(nm string, v Gauge) {
 		tmpMetric := Metric{
-			Name: nm,
+			ID: nm,
 		}
 		tmpMetric.SetGauge(v)
 		tmp = append(tmp, tmpMetric)
@@ -107,7 +93,7 @@ func (m *Metrics) Update() {
 	addGauge("RandomValue", Gauge(rand.Float64()))
 
 	tmpMetric := Metric{
-		Name: "PollCount",
+		ID: "PollCount",
 	}
 	tmpMetric.SetCounter(m.currentCount)
 	tmp = append(tmp, tmpMetric)

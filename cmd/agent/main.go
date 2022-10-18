@@ -32,7 +32,7 @@ func main() {
 			if !ok {
 				break
 			}
-			
+
 			err := sender.SendMetric(next)
 			if err != nil {
 				fmt.Println("Ошибка отправки, попробуем в следующий раз")
