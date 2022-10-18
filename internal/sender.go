@@ -22,6 +22,9 @@ func (s *Sender) SendMetric(m Metric) error {
 	}
 
 	resp, err := http.Post(url, "application/json", bytes.NewReader(bd))
+	if err != nil {
+		return err
+	}
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
