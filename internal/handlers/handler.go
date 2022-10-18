@@ -21,7 +21,7 @@ var (
 	errSaveValue   = errors.New("error on save value")
 )
 
-func (m *MetricsHandlers) PutJsonHandler(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsHandlers) PutJSONHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "wrong body", http.StatusBadRequest)
@@ -42,7 +42,7 @@ func (m *MetricsHandlers) PutJsonHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (m *MetricsHandlers) GetJsonHandler(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsHandlers) GetJSONHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "wrong body", http.StatusBadRequest)
