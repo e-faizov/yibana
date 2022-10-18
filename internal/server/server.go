@@ -18,8 +18,8 @@ func StartServer(adr string, port int64) error {
 	}
 
 	r := chi.NewRouter()
-	r.Post("/update", h.PutJsonHandler)
-	r.Post("/value", h.GetJsonHandler)
+	r.Post("/update", h.PutJSONHandler)
+	r.Post("/value", h.GetJSONHandler)
 
 	r.Post("/update/{type}/{name}/{value}", h.PostHandler)
 	r.Get("/value/{type}/{name}", h.GetHandler)
