@@ -143,7 +143,7 @@ func (m *MetricsHandlers) PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		data.SetCounter(internal.Counter(parsed))
 	} else {
-		http.Error(w, errUnknownType.Error(), http.StatusBadRequest)
+		http.Error(w, errUnknownType.Error(), http.StatusNotImplemented)
 		return
 	}
 
