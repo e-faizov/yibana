@@ -37,6 +37,7 @@ func main() {
 			if err != nil {
 				fmt.Println("Ошибка отправки, попробуем в следующий раз", err.Error())
 			} else {
+				fmt.Println("Успешная отправка")
 				metrics.Pop()
 			}
 
