@@ -14,7 +14,7 @@ type Sender struct {
 }
 
 func (s *Sender) SendMetric(m Metric) error {
-	url := fmt.Sprintf("http://%s:%d/update", s.adr, s.port)
+	url := fmt.Sprintf("http://%s/update", s.adr)
 
 	bd, err := json.Marshal(m)
 	if err != nil {
@@ -34,9 +34,8 @@ func (s *Sender) SendMetric(m Metric) error {
 	return nil
 }
 
-func NewSender(adr string, port int64) Sender {
+func NewSender(adr string) Sender {
 	return Sender{
-		adr:  adr,
-		port: port,
+		adr: adr,
 	}
 }
