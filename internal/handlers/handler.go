@@ -63,7 +63,7 @@ func (m *MetricsHandlers) GetJSONHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	if !ok {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
@@ -169,7 +169,7 @@ func (m *MetricsHandlers) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 	switch val.MType {
