@@ -18,7 +18,7 @@ func main() {
 	metrics := internal.Metrics{}
 	metrics.Update()
 
-	sender := internal.NewSender("", 8080)
+	sender := internal.NewSender("127.0.0.1", 8080)
 
 	go func() {
 		for range pollTicker.C {
