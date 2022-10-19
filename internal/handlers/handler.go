@@ -27,7 +27,7 @@ func (m *MetricsHandlers) PutJSONHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("save ", string(body))
+	//fmt.Println("save ", string(body))
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
