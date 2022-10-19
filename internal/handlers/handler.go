@@ -27,7 +27,7 @@ func (m *MetricsHandlers) PutJSONHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
-	//fmt.Println("save ", string(body))
+	fmt.Println("call PutJSONHandler, body", string(body))
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
@@ -48,6 +48,7 @@ func (m *MetricsHandlers) GetJSONHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("call GetJSONHandler, body", string(body))
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
@@ -123,6 +124,8 @@ func (m *MetricsHandlers) PostHandler(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	value := chi.URLParam(r, "value")
 
+	fmt.Println("call PostHandler, path", r.URL.Path)
+
 	data := internal.Metric{
 		ID: name,
 	}
@@ -157,6 +160,8 @@ func (m *MetricsHandlers) PostHandler(w http.ResponseWriter, r *http.Request) {
 func (m *MetricsHandlers) GetHandler(w http.ResponseWriter, r *http.Request) {
 	tp := strings.ToLower(chi.URLParam(r, "type"))
 	name := chi.URLParam(r, "name")
+
+	fmt.Println("call GetHandler, path", r.URL.Path)
 
 	val, err := m.getValue(tp, name)
 	if err != nil {
