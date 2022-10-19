@@ -163,8 +163,12 @@ func (m *MetricsHandlers) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("call GetHandler, path", r.URL.Path)
 
-	val, err := m.getValue(tp, name)
+	val, ok, err := m.getValue(tp, name)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
