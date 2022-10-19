@@ -56,9 +56,14 @@ func (m *MetricsHandlers) GetJSONHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "wrong body, not json", http.StatusBadRequest)
 		return
 	}
-	ret, err := m.getValue(data.MType, data.ID)
+	ret, ok, err := m.getValue(data.MType, data.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !ok {
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -89,7 +94,7 @@ func (m *MetricsHandlers) putMetric(metric internal.Metric) error {
 	return nil
 }
 
-func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, error) {
+func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, bool, error) {
 	ret := internal.Metric{
 		ID: key,
 	}
@@ -97,20 +102,20 @@ func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, error) {
 	if tp == "gauge" {
 		res, ok := m.Store.GetGauge(key)
 		if !ok {
-			return internal.Metric{}, errNotFound
+			return internal.Metric{}, ok, errNotFound
 		}
 		ret.SetGauge(res)
-		return ret, nil
+		return ret, ok, nil
 
 	} else if tp == "counter" {
 		res, ok := m.Store.GetCounter(key)
 		if !ok {
-			return internal.Metric{}, errNotFound
+			return internal.Metric{}, ok, errNotFound
 		}
 		ret.SetCounter(res)
-		return ret, nil
+		return ret, ok, nil
 	} else {
-		return internal.Metric{}, errUnknownType
+		return internal.Metric{}, false, errUnknownType
 	}
 }
 
