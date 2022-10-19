@@ -22,6 +22,7 @@ func main() {
 
 	go func() {
 		for range pollTicker.C {
+			fmt.Println("update metrics")
 			metrics.Update()
 		}
 	}()
@@ -34,13 +35,9 @@ func main() {
 			}
 
 			err := sender.SendMetric(next)
-			if err != nil {
-				fmt.Println("Ошибка отправки, попробуем в следующий раз", err.Error())
-			} else {
-				fmt.Println("Успешная отправка")
+			if err == nil {
 				metrics.Pop()
 			}
-
 		}
 	}
 }

@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"math/rand"
+	"fmt"
 	"runtime"
 	"sync"
 )
@@ -57,7 +57,7 @@ func (m *Metrics) Update() {
 		tmp = append(tmp, tmpMetric)
 	}
 
-	addGauge("alloc", Gauge(rtm.Alloc))
+	/*addGauge("alloc", Gauge(rtm.Alloc))
 	addGauge("BuckHashSys", Gauge(rtm.BuckHashSys))
 	addGauge("Frees", Gauge(rtm.Frees))
 	addGauge("GCCPUFraction", Gauge(rtm.GCCPUFraction))
@@ -74,10 +74,12 @@ func (m *Metrics) Update() {
 
 	addGauge("Lookups", Gauge(rtm.Lookups))
 	addGauge("MCacheInuse", Gauge(rtm.MCacheInuse))
-	addGauge("MCacheSys", Gauge(rtm.MCacheSys))
+	addGauge("MCacheSys", Gauge(rtm.MCacheSys))*/
 	addGauge("MSpanInuse", Gauge(rtm.MSpanInuse))
 
-	addGauge("MSpanSys", Gauge(rtm.MSpanSys))
+	fmt.Println("MSpanInuse", rtm.MSpanInuse)
+
+	/*addGauge("MSpanSys", Gauge(rtm.MSpanSys))
 	addGauge("Mallocs", Gauge(rtm.Mallocs))
 	addGauge("NextGC", Gauge(rtm.NextGC))
 	addGauge("NumForcedGC", Gauge(rtm.NumForcedGC))
@@ -90,7 +92,7 @@ func (m *Metrics) Update() {
 	addGauge("StackSys", Gauge(rtm.StackSys))
 	addGauge("Sys", Gauge(rtm.Sys))
 	addGauge("TotalAlloc", Gauge(rtm.TotalAlloc))
-	addGauge("RandomValue", Gauge(rand.Float64()))
+	addGauge("RandomValue", Gauge(rand.Float64()))*/
 
 	tmpMetric := Metric{
 		ID: "PollCount",
