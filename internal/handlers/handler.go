@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-chi/render"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -61,13 +62,7 @@ func (m *MetricsHandlers) GetJSONHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resData, err := json.Marshal(ret)
-	if err != nil {
-		http.Error(w, "error data format", http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(resData)
+	render.JSON(w, r, ret)
 }
 
 func (m *MetricsHandlers) putMetric(metric internal.Metric) error {
