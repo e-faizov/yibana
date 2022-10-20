@@ -21,6 +21,8 @@ func main() {
 		return
 	}
 
+	fmt.Println(cfg)
+
 	pollTicker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	reportTicker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
 
