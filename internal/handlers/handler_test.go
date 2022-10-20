@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/e-faizov/yibana/internal/interfaces"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/e-faizov/yibana/internal"
@@ -52,11 +54,11 @@ var gStore storeTest
 
 func newRouter(h *MetricsHandlers) *chi.Mux {
 	r := chi.NewRouter()
-	r.Post("/update", h.PutJSONHandler)
-	r.Post("/value", h.GetJSONHandler)
+	r.Post("/update", h.PutJSON)
+	r.Post("/value", h.GetJSON)
 
-	r.Post("/update/{type}/{name}/{value}", h.PostHandler)
-	r.Get("/value/{type}/{name}", h.GetHandler)
+	r.Post("/update/{type}/{name}/{value}", h.Post)
+	r.Get("/value/{type}/{name}", h.Get)
 
 	return r
 }
@@ -72,15 +74,31 @@ func testRequest(request *http.Request, store interfaces.Store) *http.Response {
 	return w.Result()
 }
 
-func TestMetricsHandlers_UpdateWrongData(t *testing.T) {
+func TestMetricsHandlers_Errors(t *testing.T) {
 
 	type want struct {
 		statusCode int
 	}
+	var emptyStore storeTest
+
+	gaugeTestData :=
+		`{
+"id": "test",
+"type": "gauge"
+		}
+`
+
+	counterTestData :=
+		`{
+"id": "test",
+"type": "counter"
+		}
+`
 
 	tests := []struct {
 		name    string
 		request string
+		body    io.Reader
 		method  string
 		want    want
 	}{
@@ -92,11 +110,45 @@ func TestMetricsHandlers_UpdateWrongData(t *testing.T) {
 				statusCode: http.StatusNotImplemented,
 			},
 		},
+		{
+			name:    "gauge not found",
+			request: "/value/gauge/test",
+			method:  http.MethodGet,
+			want: want{
+				statusCode: http.StatusNotFound,
+			},
+		},
+		{
+			name:    "gauge json not found",
+			request: "/value/",
+			body:    strings.NewReader(gaugeTestData),
+			method:  http.MethodGet,
+			want: want{
+				statusCode: http.StatusNotFound,
+			},
+		},
+		{
+			name:    "counter not found",
+			request: "/value/counter/test",
+			method:  http.MethodGet,
+			want: want{
+				statusCode: http.StatusNotFound,
+			},
+		},
+		{
+			name:    "counter json not found",
+			request: "/value/",
+			body:    strings.NewReader(counterTestData),
+			method:  http.MethodGet,
+			want: want{
+				statusCode: http.StatusNotFound,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.method, tt.request, nil)
-			result := testRequest(request, &gStore)
+			request := httptest.NewRequest(tt.method, tt.request, tt.body)
+			result := testRequest(request, &emptyStore)
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			err := result.Body.Close()
@@ -128,13 +180,14 @@ func TestMetricsHandlers_Counters(t *testing.T) {
 	key1 := "key1"
 	key1first := 1
 	key1second := 3242
-	//key2 := "key2"
 
 	tests := []struct {
-		name    string
-		request string
-		method  string
-		want    interface{}
+		name         string
+		request      string
+		method       string
+		gaugesData   map[string]internal.Gauge
+		countersData map[string]internal.Counter
+		want         interface{}
 	}{
 		{
 			name:    "set key1 first time",
@@ -186,6 +239,7 @@ func TestMetricsHandlers_Counters(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			request := httptest.NewRequest(tt.method, tt.request, nil)
 			result := testRequest(request, &gStore)
 

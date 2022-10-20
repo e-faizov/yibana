@@ -22,13 +22,13 @@ var (
 	errSaveValue   = errors.New("error on save value")
 )
 
-func (m *MetricsHandlers) PutJSONHandler(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("call PutJSONHandler, body", string(body))
+	//fmt.Println("call PutJSON, body", string(body))
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
@@ -43,13 +43,13 @@ func (m *MetricsHandlers) PutJSONHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (m *MetricsHandlers) GetJSONHandler(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("call GetJSONHandler, body", string(body))
+	//fmt.Println("call GetJSON, body", string(body))
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
@@ -102,7 +102,7 @@ func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, bool, error
 	if tp == "gauge" {
 		res, ok := m.Store.GetGauge(key)
 		if !ok {
-			return internal.Metric{}, ok, errNotFound
+			return internal.Metric{}, ok, nil
 		}
 		ret.SetGauge(res)
 		return ret, ok, nil
@@ -110,7 +110,7 @@ func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, bool, error
 	} else if tp == "counter" {
 		res, ok := m.Store.GetCounter(key)
 		if !ok {
-			return internal.Metric{}, ok, errNotFound
+			return internal.Metric{}, ok, nil
 		}
 		ret.SetCounter(res)
 		return ret, ok, nil
@@ -119,12 +119,12 @@ func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, bool, error
 	}
 }
 
-func (m *MetricsHandlers) PostHandler(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	tp := strings.ToLower(chi.URLParam(r, "type"))
 	name := chi.URLParam(r, "name")
 	value := chi.URLParam(r, "value")
 
-	fmt.Println("call PostHandler, path", r.URL.Path)
+	//fmt.Println("call Post, path", r.URL.Path)
 
 	data := internal.Metric{
 		ID: name,
@@ -157,11 +157,11 @@ func (m *MetricsHandlers) PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (m *MetricsHandlers) GetHandler(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsHandlers) Get(w http.ResponseWriter, r *http.Request) {
 	tp := strings.ToLower(chi.URLParam(r, "type"))
 	name := chi.URLParam(r, "name")
 
-	fmt.Println("call GetHandler, path", r.URL.Path)
+	//fmt.Println("call Get, path", r.URL.Path)
 
 	val, ok, err := m.getValue(tp, name)
 	if err != nil {
