@@ -57,7 +57,7 @@ func (m *Metrics) Update() {
 		tmp = append(tmp, tmpMetric)
 	}
 
-	addGauge("alloc", Gauge(rtm.Alloc))
+	addGauge("Alloc", Gauge(rtm.Alloc))
 	addGauge("BuckHashSys", Gauge(rtm.BuckHashSys))
 	addGauge("Frees", Gauge(rtm.Frees))
 	addGauge("GCCPUFraction", Gauge(rtm.GCCPUFraction))

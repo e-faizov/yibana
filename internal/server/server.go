@@ -18,11 +18,15 @@ func StartServer(adr string, port int64) error {
 	}
 
 	r := chi.NewRouter()
-	r.Post("/update", h.PutJSONHandler)
-	r.Post("/value", h.GetJSONHandler)
+	r.Route("/update", func(r chi.Router) {
+		r.Post("/", h.PutJSON)
+		r.Post("/{type}/{name}/{value}", h.Post)
+	})
 
-	r.Post("/update/{type}/{name}/{value}", h.PostHandler)
-	r.Get("/value/{type}/{name}", h.GetHandler)
+	r.Route("/value", func(r chi.Router) {
+		r.Post("/", h.GetJSON)
+		r.Get("/{type}/{name}", h.Get)
+	})
 
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", adr, port), r)
 }
