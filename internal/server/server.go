@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -10,7 +9,7 @@ import (
 	"github.com/e-faizov/yibana/internal/storage"
 )
 
-func StartServer(adr string, port int64) error {
+func StartServer(adr string) error {
 	store := storage.NewStore()
 
 	h := handlers.MetricsHandlers{
@@ -28,5 +27,5 @@ func StartServer(adr string, port int64) error {
 		r.Get("/{type}/{name}", h.Get)
 	})
 
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", adr, port), r)
+	return http.ListenAndServe(adr, r)
 }
