@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/e-faizov/yibana/internal"
@@ -22,7 +21,6 @@ func main() {
 
 	go func() {
 		for range pollTicker.C {
-			fmt.Println("update metrics")
 			metrics.Update()
 		}
 	}()
