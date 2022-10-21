@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/caarlos0/env/v6"
-	"os"
 	"time"
 
 	"github.com/e-faizov/yibana/internal"
@@ -21,7 +20,6 @@ func main() {
 		fmt.Printf("parse config error: %+v\n", err)
 		return
 	}
-	cfg.Address = os.Getenv("ADDRESS")
 
 	pollTicker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	reportTicker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
