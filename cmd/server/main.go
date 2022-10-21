@@ -17,5 +17,8 @@ func main() {
 		return
 	}
 
-	server.StartServer(cfg.Address)
+	err := server.StartServer(cfg.Address)
+	if err != nil {
+		panic(err)
+	}
 }
