@@ -1,17 +1,16 @@
 package server
 
 import (
+	"fmt"
+	"github.com/e-faizov/yibana/internal/interfaces"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/e-faizov/yibana/internal/handlers"
-	"github.com/e-faizov/yibana/internal/storage"
 )
 
-func StartServer(adr string) error {
-	store := storage.NewStore()
-
+func StartServer(adr string, store interfaces.Store) error {
 	h := handlers.MetricsHandlers{
 		Store: store,
 	}
@@ -26,6 +25,8 @@ func StartServer(adr string) error {
 		r.Post("/", h.GetJSON)
 		r.Get("/{type}/{name}", h.Get)
 	})
+
+	fmt.Println("start", adr)
 
 	return http.ListenAndServe(adr, r)
 }

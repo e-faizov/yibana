@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/e-faizov/yibana/internal/server"
+	"github.com/e-faizov/yibana/internal/storage"
 )
 
 type config struct {
-	Address string `env:"ADDRESS" envDefault:"localhost:8080"`
+	Address       string `env:"ADDRESS" envDefault:"localhost:8080"`
+	StoreInterval int    `env:"STORE_INTERVAL" envDefault:"300"`
+	StoreFile     string `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
+	Restore       bool   `env:"RESTORE" envDefault:"true"`
 }
 
 func main() {
@@ -17,7 +21,12 @@ func main() {
 		return
 	}
 
-	err := server.StartServer(cfg.Address)
+	store, err := storage.NewStore(cfg.StoreInterval, cfg.StoreFile, cfg.Restore)
+	if err != nil {
+		panic(err)
+	}
+
+	err = server.StartServer(cfg.Address, store)
 	if err != nil {
 		panic(err)
 	}

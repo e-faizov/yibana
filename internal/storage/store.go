@@ -1,54 +1,82 @@
 package storage
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"sync"
 
 	"github.com/e-faizov/yibana/internal"
 	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
-func NewStore() interfaces.Store {
-	return &storeImpl{
-		gauges:   map[string]internal.Gauge{},
-		counters: map[string]internal.Counter{},
+func NewStore(StoreInterval int, StoreFile string, Restore bool) (interfaces.Store, error) {
+	var sync bool
+	if StoreInterval == 0 {
+		sync = true
 	}
+	metrics := map[string]internal.Metric{}
+	if Restore {
+		_, err := os.Stat(StoreFile)
+		if err == nil || !errors.Is(err, os.ErrNotExist) {
+			data, err := os.ReadFile(StoreFile)
+			if err != nil {
+				return nil, err
+			}
+			err = json.Unmarshal(data, &metrics)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return &storeImpl{
+		metrics:   metrics,
+		sync:      sync,
+		storeFile: StoreFile,
+	}, nil
 }
 
 type storeImpl struct {
-	gaugesMtx sync.RWMutex
-	gauges    map[string]internal.Gauge
+	mtx     sync.RWMutex
+	metrics map[string]internal.Metric
 
-	countersMtx sync.RWMutex
-	counters    map[string]internal.Counter
+	storeInterval int
+	storeFile     string
+	sync          bool
 }
 
-var errNotFound = errors.New("not found")
-
-func (s *storeImpl) SetGauge(name string, val internal.Gauge) error {
-	s.gaugesMtx.Lock()
-	defer s.gaugesMtx.Unlock()
-	s.gauges[name] = val
+func (s *storeImpl) SetMetric(metric internal.Metric) error {
+	s.mtx.Lock()
+	s.mtx.Unlock()
+	s.metrics[metric.ID] = metric
+	if s.sync {
+		err := s.drop()
+		if err != nil {
+			fmt.Println("error drop", err.Error())
+		}
+	}
 	return nil
 }
-func (s *storeImpl) AddCounter(name string, val internal.Counter) error {
-	s.countersMtx.Lock()
-	defer s.countersMtx.Unlock()
-	v := s.counters[name]
-	s.counters[name] = v + val
-	return nil
+
+func (s *storeImpl) GetMetric(metric internal.Metric) (internal.Metric, bool) {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	res, ok := s.metrics[metric.ID]
+	if s.sync {
+		err := s.drop()
+		if err != nil {
+			fmt.Println("error drop", err.Error())
+		}
+	}
+	return res, ok
 }
 
-func (s *storeImpl) GetGauge(name string) (internal.Gauge, bool) {
-	s.gaugesMtx.Lock()
-	defer s.gaugesMtx.Unlock()
-	v, ok := s.gauges[name]
-	return v, ok
-}
-
-func (s *storeImpl) GetCounter(name string) (internal.Counter, bool) {
-	s.countersMtx.Lock()
-	defer s.countersMtx.Unlock()
-	v, ok := s.counters[name]
-	return v, ok
+func (s *storeImpl) drop() error {
+	data, err := json.Marshal(s.metrics)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(s.storeFile, data, 0644)
 }

@@ -19,35 +19,18 @@ import (
 )
 
 type storeTest struct {
-	gaugeName   string
-	gauge       internal.Gauge
-	counterName string
-	counter     internal.Counter
+	metric *internal.Metric
 }
 
-func (s *storeTest) SetGauge(name string, val internal.Gauge) error {
-	s.gaugeName = name
-	s.gauge = val
+func (s *storeTest) SetMetric(metric internal.Metric) error {
+	s.metric = &metric
 	return nil
 }
-func (s *storeTest) AddCounter(name string, val internal.Counter) error {
-	s.counterName = name
-	s.counter = val
-	return nil
-}
-
-func (s *storeTest) GetGauge(name string) (internal.Gauge, bool) {
-	if name != s.gaugeName {
-		return internal.Gauge(1), false
+func (s *storeTest) GetMetric(metric internal.Metric) (internal.Metric, bool) {
+	if s.metric == nil {
+		return internal.Metric{}, false
 	}
-	return s.gauge, true
-}
-
-func (s *storeTest) GetCounter(name string) (internal.Counter, bool) {
-	if name != s.counterName {
-		return internal.Counter(1), false
-	}
-	return s.counter, true
+	return *s.metric, true
 }
 
 var gStore storeTest
@@ -83,14 +66,14 @@ func TestMetricsHandlers_Errors(t *testing.T) {
 
 	gaugeTestData :=
 		`{
-"id": "test",
+"id": "testg",
 "type": "gauge"
 		}
 `
 
 	counterTestData :=
 		`{
-"id": "test",
+"id": "testc",
 "type": "counter"
 		}
 `
@@ -112,7 +95,7 @@ func TestMetricsHandlers_Errors(t *testing.T) {
 		},
 		{
 			name:    "gauge not found",
-			request: "/value/gauge/test",
+			request: "/value/gauge/testg",
 			method:  http.MethodGet,
 			want: want{
 				statusCode: http.StatusNotFound,
@@ -129,7 +112,7 @@ func TestMetricsHandlers_Errors(t *testing.T) {
 		},
 		{
 			name:    "counter not found",
-			request: "/value/counter/test",
+			request: "/value/counter/testc",
 			method:  http.MethodGet,
 			want: want{
 				statusCode: http.StatusNotFound,
@@ -248,8 +231,8 @@ func TestMetricsHandlers_Counters(t *testing.T) {
 				assert.Equal(t, want.statusCode, result.StatusCode)
 				err := result.Body.Close()
 				require.NoError(t, err)
-				assert.Equal(t, want.value, gStore.counter)
-				assert.Equal(t, want.name, gStore.counterName)
+				assert.Equal(t, want.value, *gStore.metric.Delta)
+				assert.Equal(t, want.name, gStore.metric.ID)
 
 			case wantGet:
 				assert.Equal(t, want.statusCode, result.StatusCode)
@@ -267,7 +250,11 @@ func TestMetricsHandlers_Counters(t *testing.T) {
 }
 
 func TestMetricsHandlers_GetCounters(t *testing.T) {
-	gStore.AddCounter("testCounter", 3534)
+	metr := internal.Metric{
+		ID: "testCounter",
+	}
+	metr.SetCounter(3534)
+	gStore.SetMetric(metr)
 
 	type want struct {
 		statusCode int
@@ -285,13 +272,6 @@ func TestMetricsHandlers_GetCounters(t *testing.T) {
 			want: want{
 				statusCode: http.StatusOK,
 				value:      "3534",
-			},
-		},
-		{
-			name:    "unknown value",
-			request: "/value/counter/notFound",
-			want: want{
-				statusCode: http.StatusNotFound,
 			},
 		},
 	}
@@ -350,13 +330,6 @@ func TestMetricsHandlers_Gauges(t *testing.T) {
 				statusCode: http.StatusBadRequest,
 			},
 		},
-		{
-			name:    "without value",
-			request: "/update/gauge/test",
-			want: want{
-				statusCode: http.StatusNotFound,
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -368,15 +341,19 @@ func TestMetricsHandlers_Gauges(t *testing.T) {
 			require.NoError(t, err)
 
 			if result.StatusCode == http.StatusOK {
-				assert.Equal(t, tt.want.gaugeValue, gStore.gauge)
-				assert.Equal(t, tt.want.gaugeName, gStore.gaugeName)
+				assert.Equal(t, tt.want.gaugeValue, *gStore.metric.Value)
+				assert.Equal(t, tt.want.gaugeName, gStore.metric.ID)
 			}
 		})
 	}
 }
 
 func TestMetricsHandlers_GetGauges(t *testing.T) {
-	gStore.SetGauge("testGauges", 3746.0)
+	metr := internal.Metric{
+		ID: "testGauges",
+	}
+	metr.SetGauge(3746.0)
+	gStore.SetMetric(metr)
 
 	type want struct {
 		statusCode int

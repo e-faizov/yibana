@@ -72,19 +72,8 @@ func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 
 func (m *MetricsHandlers) putMetric(metric internal.Metric) error {
 	switch metric.MType {
-	case "gauge":
-		if metric.Value == nil {
-			return errWrongValue
-		}
-		err := m.Store.SetGauge(metric.ID, *metric.Value)
-		if err != nil {
-			return errSaveValue
-		}
-	case "counter":
-		if metric.Delta == nil {
-			return errWrongValue
-		}
-		err := m.Store.AddCounter(metric.ID, *metric.Delta)
+	case "gauge", "counter":
+		err := m.Store.SetMetric(metric)
 		if err != nil {
 			return errSaveValue
 		}
@@ -99,21 +88,9 @@ func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, bool, error
 		ID: key,
 	}
 
-	if tp == "gauge" {
-		res, ok := m.Store.GetGauge(key)
-		if !ok {
-			return internal.Metric{}, ok, nil
-		}
-		ret.SetGauge(res)
-		return ret, ok, nil
-
-	} else if tp == "counter" {
-		res, ok := m.Store.GetCounter(key)
-		if !ok {
-			return internal.Metric{}, ok, nil
-		}
-		ret.SetCounter(res)
-		return ret, ok, nil
+	if tp == "gauge" || tp == "counter" {
+		res, ok := m.Store.GetMetric(ret)
+		return res, ok, nil
 	} else {
 		return internal.Metric{}, false, errUnknownType
 	}
