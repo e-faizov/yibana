@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/e-faizov/yibana/internal/interfaces"
 	"net/http"
 
@@ -25,8 +24,6 @@ func StartServer(adr string, store interfaces.Store) error {
 		r.Post("/", h.GetJSON)
 		r.Get("/{type}/{name}", h.Get)
 	})
-
-	fmt.Println("start", adr)
 
 	return http.ListenAndServe(adr, r)
 }
