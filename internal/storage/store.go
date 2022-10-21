@@ -49,7 +49,7 @@ type storeImpl struct {
 
 func (s *storeImpl) SetMetric(metric internal.Metric) error {
 	s.mtx.Lock()
-	s.mtx.Unlock()
+	defer s.mtx.Unlock()
 	s.metrics[metric.ID] = metric
 	if s.sync {
 		err := s.drop()
