@@ -100,7 +100,7 @@ func (s *storeImpl) GetMetric(metric internal.Metric) (internal.Metric, bool) {
 func (s *storeImpl) Drop() error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	return s.Drop()
+	return s.drop()
 }
 
 func (s *storeImpl) drop() error {
