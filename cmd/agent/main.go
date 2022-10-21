@@ -9,9 +9,9 @@ import (
 )
 
 type config struct {
-	Address        string `env:"ADDRESS" envDefault:"localhost:8080"`
-	ReportInterval int    `env:"REPORT_INTERVAL" envDefault:"10"`
-	PollInterval   int    `env:"POLL_INTERVAL" envDefault:"2"`
+	Address        string        `env:"ADDRESS" envDefault:"localhost:8080"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
 }
 
 func main() {
@@ -21,8 +21,8 @@ func main() {
 		return
 	}
 
-	pollTicker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
-	reportTicker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
+	pollTicker := time.NewTicker(cfg.PollInterval)
+	reportTicker := time.NewTicker(cfg.ReportInterval)
 
 	metrics := internal.Metrics{}
 	metrics.Update()
