@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/e-faizov/yibana/internal/interfaces"
+	"github.com/e-faizov/yibana/internal/middlewares"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,6 +16,9 @@ func StartServer(adr string, store interfaces.Store) error {
 	}
 
 	r := chi.NewRouter()
+	//r.Use(middleware.Compress(5))
+	r.Use(middlewares.Compress)
+	r.Get("/", h.Info)
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", h.PutJSON)
 		r.Post("/{type}/{name}/{value}", h.Post)

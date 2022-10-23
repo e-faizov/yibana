@@ -110,3 +110,13 @@ func (s *storeImpl) drop() error {
 	}
 	return os.WriteFile(s.storeFile, data, 0644)
 }
+
+func (s *storeImpl) GetAll() []internal.Metric {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	res := make([]internal.Metric, 0, len(s.metrics))
+	for _, v := range s.metrics {
+		res = append(res, v)
+	}
+	return res
+}
