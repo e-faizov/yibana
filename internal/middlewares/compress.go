@@ -91,6 +91,5 @@ func Compress(next http.Handler) http.Handler {
 		gz := gzipWriter{Rw: w}
 		defer gz.Close()
 		next.ServeHTTP(&gz, r)
-		return
 	})
 }
