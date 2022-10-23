@@ -33,6 +33,10 @@ func (s *storeTest) GetMetric(metric internal.Metric) (internal.Metric, bool) {
 	return *s.metric, true
 }
 
+func (s *storeTest) GetAll() []internal.Metric {
+	return []internal.Metric{}
+}
+
 var gStore storeTest
 
 func newRouter(h *MetricsHandlers) *chi.Mux {
