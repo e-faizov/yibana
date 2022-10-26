@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,16 +14,14 @@ type Sender struct {
 }
 
 func (s *Sender) SendMetric(m Metric) error {
-	return s.sendData(m.GetType(), m.Name, m.ToString())
-}
+	url := fmt.Sprintf("http://%s/update", s.adr)
 
-func (s *Sender) sendData(tp, name, val string) error {
-	url := fmt.Sprintf("http://%s:%d/update/%s/%s/%s", s.adr, s.port, tp, name, val)
-	return s.send(url)
-}
+	bd, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
 
-func (s *Sender) send(url string) error {
-	resp, err := http.Post(url, "text/plain", nil)
+	resp, err := http.Post(url, "application/json", bytes.NewReader(bd))
 	if err != nil {
 		return err
 	}
@@ -34,9 +34,8 @@ func (s *Sender) send(url string) error {
 	return nil
 }
 
-func NewSender(adr string, port int64) Sender {
+func NewSender(adr string) Sender {
 	return Sender{
-		adr:  adr,
-		port: port,
+		adr: adr,
 	}
 }
