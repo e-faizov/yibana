@@ -13,7 +13,9 @@ func main() {
 	pollTicker := time.NewTicker(cfg.PollInterval)
 	reportTicker := time.NewTicker(cfg.ReportInterval)
 
-	metrics := internal.Metrics{}
+	metrics := internal.Metrics{
+		Key: cfg.Key,
+	}
 	metrics.Update()
 
 	sender := internal.NewSender(cfg.Address)

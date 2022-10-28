@@ -10,7 +10,9 @@ import (
 )
 
 func CalcGaugeHash(id string, g Gauge, k string) string {
-	return calcHash(fmt.Sprintf("%s:gauge:%f", id, g), k)
+	str := fmt.Sprintf("%s:gauge:%f", id, g)
+	hash := calcHash(str, k)
+	return hash
 }
 
 func CalcCounterHash(id string, d Counter, k string) string {
@@ -30,6 +32,15 @@ type Metric struct {
 	Delta *Counter `json:"delta,omitempty"`
 	Value *Gauge   `json:"value,omitempty"`
 	Hash  string   `json:"hash,omitempty"`
+}
+
+func (m Metric) String() string {
+	if m.MType == GaugeType && m.Value != nil {
+		return fmt.Sprintf("type: %s, name: %s, value: %f, hash: %s", m.MType, m.ID, *m.Value, m.Hash)
+	} else if m.MType == CounterType && m.Delta != nil {
+		return fmt.Sprintf("type: %s, name: %s, delta: %d, hash: %s", m.MType, m.ID, *m.Delta, m.Hash)
+	}
+	return "empty metric id: " + m.ID
 }
 
 func (m *Metric) SetGauge(g Gauge) {

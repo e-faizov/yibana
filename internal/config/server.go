@@ -26,7 +26,7 @@ func GetServerConfig() ServerConfig {
 		flag.DurationVar(&serverCfg.StoreInterval, "i", time.Duration(300)*time.Second, "STORE_INTERVAL")
 		flag.StringVar(&serverCfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "STORE_FILE")
 		flag.BoolVar(&serverCfg.Restore, "r", true, "RESTORE")
-		flag.StringVar(&(agentCfg.Key), "k", "", "KEY")
+		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
