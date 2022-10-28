@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/render"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 
 	"github.com/e-faizov/yibana/internal"
 )
@@ -23,17 +23,33 @@ var (
 )
 
 func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
-	//fmt.Println("call PutJSON, body", string(body))
+
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		http.Error(w, "wrong body, not json", http.StatusBadRequest)
 		return
+	}
+
+	if len(m.Key) != 0 {
+		if data.MType == internal.GaugeType {
+			if data.Hash != internal.CalcGaugeHash(data.ID, *data.Value, m.Key) {
+				err = errors.New("error")
+			}
+		} else {
+			if data.Hash != internal.CalcCounterHash(data.ID, *data.Delta, m.Key) {
+				err = errors.New("error")
+			}
+		}
+		if err != nil {
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
 	}
 
 	err = m.putMetric(data)
@@ -44,12 +60,11 @@ func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
-	//fmt.Println("call GetJSON, body", string(body))
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
@@ -67,12 +82,20 @@ func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(m.Key) != 0 {
+		if ret.MType == internal.GaugeType {
+			ret.Hash = internal.CalcGaugeHash(ret.ID, *ret.Value, m.Key)
+		} else {
+			ret.Hash = internal.CalcCounterHash(ret.ID, *ret.Delta, m.Key)
+		}
+	}
+
 	render.JSON(w, r, ret)
 }
 
 func (m *MetricsHandlers) putMetric(metric internal.Metric) error {
 	switch metric.MType {
-	case "gauge", "counter":
+	case internal.GaugeType, internal.CounterType:
 		err := m.Store.SetMetric(metric)
 		if err != nil {
 			return errSaveValue
@@ -88,7 +111,7 @@ func (m *MetricsHandlers) getValue(tp, key string) (internal.Metric, bool, error
 		ID: key,
 	}
 
-	if tp == "gauge" || tp == "counter" {
+	if tp == internal.GaugeType || tp == internal.CounterType {
 		res, ok := m.Store.GetMetric(ret)
 		return res, ok, nil
 	} else {
@@ -101,13 +124,11 @@ func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	value := chi.URLParam(r, "value")
 
-	//fmt.Println("call Post, path", r.URL.Path)
-
 	data := internal.Metric{
 		ID: name,
 	}
 
-	if tp == "gauge" {
+	if tp == internal.GaugeType {
 		parsed, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			http.Error(w, errWrongValue.Error(), http.StatusBadRequest)
@@ -115,7 +136,7 @@ func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data.SetGauge(internal.Gauge(parsed))
-	} else if tp == "counter" {
+	} else if tp == internal.CounterType {
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			http.Error(w, errWrongValue.Error(), http.StatusBadRequest)
@@ -138,8 +159,6 @@ func (m *MetricsHandlers) Get(w http.ResponseWriter, r *http.Request) {
 	tp := strings.ToLower(chi.URLParam(r, "type"))
 	name := chi.URLParam(r, "name")
 
-	//fmt.Println("call Get, path", r.URL.Path)
-
 	val, ok, err := m.getValue(tp, name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -150,10 +169,10 @@ func (m *MetricsHandlers) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch val.MType {
-	case "gauge":
+	case internal.GaugeType:
 		w.Write([]byte(fmt.Sprintf("%.3f", *val.Value)))
 		return
-	case "counter":
+	case internal.CounterType:
 		w.Write([]byte(fmt.Sprintf("%d", *val.Delta)))
 		return
 	default:

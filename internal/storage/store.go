@@ -12,13 +12,13 @@ import (
 	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
-func NewStore(StoreInterval time.Duration, StoreFile string, Restore bool) (interfaces.Store, error) {
+func NewStore(storeInterval time.Duration, storeFile string, restore bool) (interfaces.Store, error) {
 	var sync bool
 	metrics := map[string]internal.Metric{}
-	if Restore {
-		_, err := os.Stat(StoreFile)
+	if restore {
+		_, err := os.Stat(storeFile)
 		if err == nil || !errors.Is(err, os.ErrNotExist) {
-			data, err := os.ReadFile(StoreFile)
+			data, err := os.ReadFile(storeFile)
 			if err != nil {
 				return nil, err
 			}
@@ -32,22 +32,23 @@ func NewStore(StoreInterval time.Duration, StoreFile string, Restore bool) (inte
 	res := &storeImpl{
 		metrics:   metrics,
 		sync:      sync,
-		storeFile: StoreFile,
+		storeFile: storeFile,
 	}
 
-	if StoreInterval == 0 {
+	if storeInterval == 0 {
 		sync = true
-	} else {
-		dropper := time.NewTicker(StoreInterval)
-		go func() {
-			for range dropper.C {
-				err := res.Drop()
-				if err != nil {
-					fmt.Println("err drop", err.Error())
-				}
-			}
-		}()
+		return res, nil
 	}
+
+	dropper := time.NewTicker(storeInterval)
+	go func() {
+		for range dropper.C {
+			err := res.Drop()
+			if err != nil {
+				fmt.Println("err drop", err.Error())
+			}
+		}
+	}()
 
 	return res, nil
 }
@@ -62,16 +63,9 @@ type storeImpl struct {
 }
 
 func (s *storeImpl) SetMetric(metric internal.Metric) error {
-	/*var v interface{}
-	if metric.MType == "gauge" {
-		v = *metric.Value
-	} else {
-		v = *metric.Delta
-	}
-	fmt.Println("set metric", metric, "value", v)*/
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	if metric.MType == "gauge" {
+	if metric.MType == internal.GaugeType {
 		s.metrics[metric.ID] = metric
 	} else {
 		old, ok := s.metrics[metric.ID]
@@ -90,7 +84,6 @@ func (s *storeImpl) SetMetric(metric internal.Metric) error {
 }
 
 func (s *storeImpl) GetMetric(metric internal.Metric) (internal.Metric, bool) {
-	//fmt.Println("read metric", metric)
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	res, ok := s.metrics[metric.ID]

@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/e-faizov/yibana/internal/interfaces"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -12,10 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/e-faizov/yibana/internal"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/e-faizov/yibana/internal"
+	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
 type storeTest struct {

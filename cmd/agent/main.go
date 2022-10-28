@@ -1,34 +1,14 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"github.com/caarlos0/env/v6"
 	"time"
 
 	"github.com/e-faizov/yibana/internal"
+	"github.com/e-faizov/yibana/internal/config"
 )
 
-type config struct {
-	Address        string        `env:"ADDRESS"`
-	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL"`
-}
-
-var cfg config
-
-func init() {
-	flag.StringVar(&cfg.Address, "a", "localhost:8080", "ADDRESS")
-	flag.DurationVar(&cfg.ReportInterval, "r", time.Duration(10)*time.Second, "REPORT_INTERVAL")
-	flag.DurationVar(&cfg.PollInterval, "p", time.Duration(2)*time.Second, "POLL_INTERVAL")
-}
-
 func main() {
-	flag.Parse()
-	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("parse config error: %+v\n", err)
-		return
-	}
+	cfg := config.GetAgentConfig()
 
 	pollTicker := time.NewTicker(cfg.PollInterval)
 	reportTicker := time.NewTicker(cfg.ReportInterval)
