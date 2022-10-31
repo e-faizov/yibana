@@ -23,6 +23,10 @@ type storeTest struct {
 	metric *internal.Metric
 }
 
+func (s *storeTest) Ping() error {
+	return nil
+}
+
 func (s *storeTest) SetMetric(metric internal.Metric) error {
 	s.metric = &metric
 	return nil
