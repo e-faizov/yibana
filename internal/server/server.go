@@ -19,6 +19,7 @@ func StartServer(adr string, store interfaces.Store, key string) error {
 	r := chi.NewRouter()
 	r.Use(middlewares.Compress)
 	r.Get("/", h.Info)
+	r.Get("/ping", h.Ping)
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", h.PutJSON)
 		r.Post("/{type}/{name}/{value}", h.Post)

@@ -12,7 +12,7 @@ import (
 	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
-func NewStore(storeInterval time.Duration, storeFile string, restore bool) (interfaces.Store, error) {
+func NewMemStore(storeInterval time.Duration, storeFile string, restore bool) (interfaces.Store, error) {
 	var sync bool
 	metrics := map[string]internal.Metric{}
 	if restore {
@@ -29,7 +29,7 @@ func NewStore(storeInterval time.Duration, storeFile string, restore bool) (inte
 		}
 	}
 
-	res := &storeImpl{
+	res := &memStore{
 		metrics:   metrics,
 		sync:      sync,
 		storeFile: storeFile,
@@ -53,7 +53,7 @@ func NewStore(storeInterval time.Duration, storeFile string, restore bool) (inte
 	return res, nil
 }
 
-type storeImpl struct {
+type memStore struct {
 	mtx     sync.RWMutex
 	metrics map[string]internal.Metric
 
@@ -62,7 +62,11 @@ type storeImpl struct {
 	sync          bool
 }
 
-func (s *storeImpl) SetMetric(metric internal.Metric) error {
+func (s *memStore) Ping() error {
+	return nil
+}
+
+func (s *memStore) SetMetric(metric internal.Metric) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	if metric.MType == internal.GaugeType {
@@ -83,20 +87,20 @@ func (s *storeImpl) SetMetric(metric internal.Metric) error {
 	return nil
 }
 
-func (s *storeImpl) GetMetric(metric internal.Metric) (internal.Metric, bool) {
+func (s *memStore) GetMetric(metric internal.Metric) (internal.Metric, bool) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	res, ok := s.metrics[metric.ID]
 	return res, ok
 }
 
-func (s *storeImpl) Drop() error {
+func (s *memStore) Drop() error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	return s.drop()
 }
 
-func (s *storeImpl) drop() error {
+func (s *memStore) drop() error {
 	data, err := json.Marshal(s.metrics)
 	if err != nil {
 		return err
@@ -104,7 +108,7 @@ func (s *storeImpl) drop() error {
 	return os.WriteFile(s.storeFile, data, 0644)
 }
 
-func (s *storeImpl) GetAll() []internal.Metric {
+func (s *memStore) GetAll() []internal.Metric {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	res := make([]internal.Metric, 0, len(s.metrics))

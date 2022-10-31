@@ -13,6 +13,7 @@ type ServerConfig struct {
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
 	Key           string        `env:"KEY"`
+	DatabaseDsn   string        `env:"DATABASE_DSN"`
 }
 
 var (
@@ -27,6 +28,7 @@ func GetServerConfig() ServerConfig {
 		flag.StringVar(&serverCfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "STORE_FILE")
 		flag.BoolVar(&serverCfg.Restore, "r", true, "RESTORE")
 		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
+		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
