@@ -16,8 +16,8 @@ func init() {
 }
 func (m *MetricsHandlers) Info(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	data, err := m.Store.GetAll(ctx)
 	w.Header().Set("Content-Type", "text/html")
+	data, err := m.Store.GetAll(ctx)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
