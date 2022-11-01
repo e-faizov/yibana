@@ -179,6 +179,9 @@ on t2.mtid = t1.mtid`
 		}
 		ret = append(ret, tmp)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return ret, nil
 }
