@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -66,7 +67,7 @@ func (s *memStore) Ping() error {
 	return nil
 }
 
-func (s *memStore) SetMetric(metric internal.Metric) error {
+func (s *memStore) SetMetric(ctx context.Context, metric internal.Metric) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	if metric.MType == internal.GaugeType {
@@ -87,11 +88,11 @@ func (s *memStore) SetMetric(metric internal.Metric) error {
 	return nil
 }
 
-func (s *memStore) GetMetric(metric internal.Metric) (internal.Metric, bool) {
+func (s *memStore) GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	res, ok := s.metrics[metric.ID]
-	return res, ok
+	return res, ok, nil
 }
 
 func (s *memStore) Drop() error {
@@ -108,12 +109,12 @@ func (s *memStore) drop() error {
 	return os.WriteFile(s.storeFile, data, 0644)
 }
 
-func (s *memStore) GetAll() []internal.Metric {
+func (s *memStore) GetAll(ctx context.Context) ([]internal.Metric, error) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	res := make([]internal.Metric, 0, len(s.metrics))
 	for _, v := range s.metrics {
 		res = append(res, v)
 	}
-	return res
+	return res, nil
 }

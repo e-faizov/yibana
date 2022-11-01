@@ -27,19 +27,19 @@ func (s *storeTest) Ping() error {
 	return nil
 }
 
-func (s *storeTest) SetMetric(metric internal.Metric) error {
+func (s *storeTest) SetMetric(ctx context.Context, metric internal.Metric) error {
 	s.metric = &metric
 	return nil
 }
-func (s *storeTest) GetMetric(metric internal.Metric) (internal.Metric, bool) {
+func (s *storeTest) GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
 	if s.metric == nil {
-		return internal.Metric{}, false
+		return internal.Metric{}, false, nil
 	}
-	return *s.metric, true
+	return *s.metric, true, nil
 }
 
-func (s *storeTest) GetAll() []internal.Metric {
-	return []internal.Metric{}
+func (s *storeTest) GetAll(ctx context.Context) ([]internal.Metric, error) {
+	return []internal.Metric{}, nil
 }
 
 var gStore storeTest
@@ -263,7 +263,7 @@ func TestMetricsHandlers_GetCounters(t *testing.T) {
 		ID: "testCounter",
 	}
 	metr.SetCounter(3534)
-	gStore.SetMetric(metr)
+	gStore.SetMetric(context.Background(), metr)
 
 	type want struct {
 		statusCode int
@@ -362,7 +362,7 @@ func TestMetricsHandlers_GetGauges(t *testing.T) {
 		ID: "testGauges",
 	}
 	metr.SetGauge(3746.0)
-	gStore.SetMetric(metr)
+	gStore.SetMetric(context.Background(), metr)
 
 	type want struct {
 		statusCode int

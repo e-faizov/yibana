@@ -15,7 +15,11 @@ func init() {
 	tmpl = template.Must(template.New("info").Parse(templateString))
 }
 func (m *MetricsHandlers) Info(w http.ResponseWriter, r *http.Request) {
-	data := m.Store.GetAll()
+	ctx := r.Context()
+	data, err := m.Store.GetAll(ctx)
 	w.Header().Set("Content-Type", "text/html")
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
 	tmpl.Execute(w, data)
 }
