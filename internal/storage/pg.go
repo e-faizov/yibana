@@ -13,7 +13,12 @@ import (
 )
 
 func createMetricsTable(ctx context.Context, db *sql.DB) error {
-	sql := `create table metrics
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	sqlstring := `create table metrics
 (
 	mid serial
 		constraint metrics_pk
@@ -24,11 +29,28 @@ func createMetricsTable(ctx context.Context, db *sql.DB) error {
 	delta bigint,
 	hash text
 )`
-	_, err := db.ExecContext(ctx, sql)
-	return err
+
+	_, err = tx.ExecContext(ctx, sqlstring)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	sqlUnique := "create unique index metrics_id_uindex on metrics (id)"
+	_, err = tx.ExecContext(ctx, sqlUnique)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }
 
 func createMTypesTable(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
 	sqlCreate := `create table metric_types
 	(
 		mtid serial,
@@ -40,28 +62,33 @@ func createMTypesTable(ctx context.Context, db *sql.DB) error {
 	add constraint metric_types_pk
 		primary key (mtid)`
 
-	_, err := db.ExecContext(ctx, sqlCreate)
+	_, err = tx.ExecContext(ctx, sqlCreate)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
-	_, err = db.ExecContext(ctx, sqlIndex)
+	_, err = tx.ExecContext(ctx, sqlIndex)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
-	_, err = db.ExecContext(ctx, sqlAlter)
+	_, err = tx.ExecContext(ctx, sqlAlter)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	_, err = db.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.GaugeType))
+	_, err = tx.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.GaugeType))
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
-	_, err = db.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.CounterType))
+	_, err = tx.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.CounterType))
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
-	return nil
+	return tx.Commit()
 }
 
 func clearTable(db *sql.DB) {
@@ -133,24 +160,36 @@ func (p *pgStore) Ping() error {
 }
 
 func (p *pgStore) SetMetric(ctx context.Context, metric internal.Metric) error {
-	sql := "insert into metrics (id, mtid, value, delta, hash) values ($1, (select mtid from metric_types where mtname=$2), $3, $4, $5)"
-	_, err := p.db.ExecContext(ctx, sql, metric.ID, metric.MType, metric.Value, metric.Delta, metric.Hash)
+	sqlstring := `insert into metrics (id, mtid, value, delta, hash)
+values ($1, (select mtid from metric_types where mtname=$2), $3, $4, $5)
+on conflict(id)
+`
+	if metric.MType == internal.GaugeType {
+		sqlstring = sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=EXCLUDED.delta, hash=EXCLUDED.hash"
+	} else {
+		//ToDo: решить проблему со сменой типа метрики, тогда metrics.delta=null и сумма не работает, пока в тз такого не было
+		sqlstring = sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=metrics.delta+EXCLUDED.delta, hash=EXCLUDED.hash"
+	}
+
+	_, err := p.db.ExecContext(ctx, sqlstring, metric.ID, metric.MType, metric.Value, metric.Delta, metric.Hash)
 	return err
 }
 
 func (p *pgStore) GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
-	sql := `select t1.id, t2.mtname, t1.value, t1.delta, t1.hash from metrics t1
+	sqlstring := `select t1.id, t2.mtname, t1.value, t1.delta, t1.hash from metrics t1
 join metric_types t2
 on t2.mtid = t1.mtid
 where t1.id = $1 and t2.mtname = $2`
 
-	row := p.db.QueryRowContext(ctx, sql, metric.ID, metric.MType)
+	row := p.db.QueryRowContext(ctx, sqlstring, metric.ID, metric.MType)
 	var ret internal.Metric
 	var exist bool
 
 	err := row.Scan(&ret.ID, &ret.MType, &ret.Value, &ret.Delta, &ret.Hash)
 	if err != nil {
-		return internal.Metric{}, false, err
+		if err != sql.ErrNoRows {
+			return internal.Metric{}, false, err
+		}
 	} else {
 		exist = true
 	}
@@ -159,13 +198,13 @@ where t1.id = $1 and t2.mtname = $2`
 }
 
 func (p *pgStore) GetAll(ctx context.Context) ([]internal.Metric, error) {
-	sql := `select t1.id, t2.mtid, t1.value, t1.delta, t1.hash from metrics t1
+	sqlstring := `select t1.id, t1.mtid, t2.mtname, t1.value, t1.delta, t1.hash from metrics t1
 join metric_types t2
 on t2.mtid = t1.mtid`
 
 	var ret []internal.Metric
 
-	rows, err := p.db.QueryContext(ctx, sql)
+	rows, err := p.db.QueryContext(ctx, sqlstring)
 	if err != nil {
 		return ret, err
 	}
@@ -173,7 +212,8 @@ on t2.mtid = t1.mtid`
 
 	for rows.Next() {
 		var tmp internal.Metric
-		err = rows.Scan(&tmp.ID, &tmp.MType, &tmp.Value, &tmp.Delta, &tmp.Hash)
+		var mtid int64
+		err = rows.Scan(&tmp.ID, &mtid, &tmp.MType, &tmp.Value, &tmp.Delta, &tmp.Hash)
 		if err != nil {
 			return nil, err
 		}
