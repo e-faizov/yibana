@@ -67,18 +67,22 @@ func (s *memStore) Ping() error {
 	return nil
 }
 
-func (s *memStore) SetMetric(ctx context.Context, metric internal.Metric) error {
+func (s *memStore) SetMetrics(ctx context.Context, metrics []internal.Metric) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	if metric.MType == internal.GaugeType {
-		s.metrics[metric.ID] = metric
-	} else {
-		old, ok := s.metrics[metric.ID]
-		if ok && old.Delta != nil {
-			*metric.Delta = *old.Delta + *metric.Delta
+
+	for _, metric := range metrics {
+		if metric.MType == internal.GaugeType {
+			s.metrics[metric.ID] = metric
+		} else {
+			old, ok := s.metrics[metric.ID]
+			if ok && old.Delta != nil {
+				*metric.Delta = *old.Delta + *metric.Delta
+			}
+			s.metrics[metric.ID] = metric
 		}
-		s.metrics[metric.ID] = metric
 	}
+
 	if s.sync {
 		err := s.drop()
 		if err != nil {

@@ -28,14 +28,12 @@ func main() {
 
 	for range reportTicker.C {
 		for {
-			next, ok := metrics.Front()
-			if !ok {
-				break
-			}
-
-			err := sender.SendMetric(next)
-			if err == nil {
-				metrics.Pop()
+			batch := metrics.Batch()
+			if len(batch) != 0 {
+				err := sender.SendMetrics(batch)
+				if err == nil {
+					metrics.Pop()
+				}
 			}
 		}
 	}

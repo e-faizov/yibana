@@ -39,16 +39,7 @@ func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(m.Key) != 0 {
-		if data.MType == internal.GaugeType {
-			if data.Hash != internal.CalcGaugeHash(data.ID, *data.Value, m.Key) {
-				err = errors.New("error")
-			}
-		} else {
-			if data.Hash != internal.CalcCounterHash(data.ID, *data.Delta, m.Key) {
-				err = errors.New("error")
-			}
-		}
-		if err != nil {
+		if !checkHash(m.Key, data) {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
@@ -99,7 +90,7 @@ func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 func (m *MetricsHandlers) putMetric(ctx context.Context, metric internal.Metric) error {
 	switch metric.MType {
 	case internal.GaugeType, internal.CounterType:
-		err := m.Store.SetMetric(ctx, metric)
+		err := m.Store.SetMetrics(ctx, []internal.Metric{metric})
 		if err != nil {
 			return errSaveValue
 		}

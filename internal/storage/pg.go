@@ -32,14 +32,20 @@ func createMetricsTable(ctx context.Context, db *sql.DB) error {
 
 	_, err = tx.ExecContext(ctx, sqlstring)
 	if err != nil {
-		tx.Rollback()
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+		}
 		return err
 	}
 
 	sqlUnique := "create unique index metrics_id_uindex on metrics (id)"
 	_, err = tx.ExecContext(ctx, sqlUnique)
 	if err != nil {
-		tx.Rollback()
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+		}
 		return err
 	}
 	return tx.Commit()
@@ -64,28 +70,43 @@ func createMTypesTable(ctx context.Context, db *sql.DB) error {
 
 	_, err = tx.ExecContext(ctx, sqlCreate)
 	if err != nil {
-		tx.Rollback()
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+		}
 		return err
 	}
 	_, err = tx.ExecContext(ctx, sqlIndex)
 	if err != nil {
-		tx.Rollback()
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+		}
 		return err
 	}
 	_, err = tx.ExecContext(ctx, sqlAlter)
 	if err != nil {
-		tx.Rollback()
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+		}
 		return err
 	}
 
 	_, err = tx.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.GaugeType))
 	if err != nil {
-		tx.Rollback()
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+		}
 		return err
 	}
 	_, err = tx.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.CounterType))
 	if err != nil {
-		tx.Rollback()
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+		}
 		return err
 	}
 	return tx.Commit()
@@ -159,20 +180,64 @@ func (p *pgStore) Ping() error {
 	return p.db.Ping()
 }
 
-func (p *pgStore) SetMetric(ctx context.Context, metric internal.Metric) error {
+func (p *pgStore) SetMetrics(ctx context.Context, metrics []internal.Metric) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
 	sqlstring := `insert into metrics (id, mtid, value, delta, hash)
 values ($1, (select mtid from metric_types where mtname=$2), $3, $4, $5)
 on conflict(id)
 `
-	if metric.MType == internal.GaugeType {
-		sqlstring = sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=EXCLUDED.delta, hash=EXCLUDED.hash"
-	} else {
-		//ToDo: решить проблему со сменой типа метрики, тогда metrics.delta=null и сумма не работает, пока в тз такого не было
-		sqlstring = sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=metrics.delta+EXCLUDED.delta, hash=EXCLUDED.hash"
+	sqlgauge := sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=EXCLUDED.delta, hash=EXCLUDED.hash"
+	//ToDo: решить проблему со сменой типа метрики, тогда metrics.delta=null и сумма не работает, пока в тз такого не было
+	sqlcounter := sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=metrics.delta+EXCLUDED.delta, hash=EXCLUDED.hash"
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
 	}
 
-	_, err := p.db.ExecContext(ctx, sqlstring, metric.ID, metric.MType, metric.Value, metric.Delta, metric.Hash)
-	return err
+	var gaugeStmt, counterStmt *sql.Stmt
+
+	for _, metric := range metrics {
+		var curStmt *sql.Stmt
+		if metric.MType == internal.GaugeType {
+			if gaugeStmt == nil {
+				gaugeStmt, err = tx.PrepareContext(ctx, sqlgauge)
+				if err != nil {
+					errRoll := tx.Rollback()
+					if errRoll != nil {
+						err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+					}
+					return err
+				}
+			}
+			curStmt = gaugeStmt
+		} else {
+			if counterStmt == nil {
+				counterStmt, err = tx.PrepareContext(ctx, sqlcounter)
+				if err != nil {
+					errRoll := tx.Rollback()
+					if errRoll != nil {
+						err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+					}
+					return err
+				}
+			}
+			curStmt = counterStmt
+		}
+		_, err = curStmt.ExecContext(ctx, metric.ID, metric.MType, metric.Value, metric.Delta, metric.Hash)
+		if err != nil {
+			errRoll := tx.Rollback()
+			if errRoll != nil {
+				err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+			}
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (p *pgStore) GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {

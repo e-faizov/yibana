@@ -25,6 +25,10 @@ func StartServer(adr string, store interfaces.Store, key string) error {
 		r.Post("/{type}/{name}/{value}", h.Post)
 	})
 
+	r.Route("/updates", func(r chi.Router) {
+		r.Post("/", h.PutsJSON)
+	})
+
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", h.GetJSON)
 		r.Get("/{type}/{name}", h.Get)

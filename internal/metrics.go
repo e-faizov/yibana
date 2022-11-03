@@ -135,6 +135,17 @@ func (m *Metrics) Update() {
 	m.data = append(m.data, tmp...)
 }
 
+func (m *Metrics) Batch() []Metric {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	if len(m.data) == 0 {
+		return []Metric{}
+	}
+	ret := m.data
+	m.data = make([]Metric, 0, 100)
+	return ret
+}
+
 func (m *Metrics) Front() (Metric, bool) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
