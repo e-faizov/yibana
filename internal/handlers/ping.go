@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"github.com/rs/zerolog/log"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 )
 
 func (m *MetricsHandlers) Ping(w http.ResponseWriter, r *http.Request) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	_ "github.com/lib/pq"
 
 	"github.com/e-faizov/yibana/internal"

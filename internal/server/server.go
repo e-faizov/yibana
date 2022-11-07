@@ -1,13 +1,13 @@
 package server
 
 import (
-	"github.com/e-faizov/yibana/internal/middlewares"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/e-faizov/yibana/internal/handlers"
 	"github.com/e-faizov/yibana/internal/interfaces"
+	"github.com/e-faizov/yibana/internal/middlewares"
 )
 
 func StartServer(adr string, store interfaces.Store, key string) error {

@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/e-faizov/yibana/internal"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
+
+	"github.com/e-faizov/yibana/internal"
 )
 
 func (m *MetricsHandlers) PutsJSON(w http.ResponseWriter, r *http.Request) {

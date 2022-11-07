@@ -1,20 +1,15 @@
 package main
 
 import (
-	"fmt"
+	"github.com/rs/zerolog/log"
+
 	"github.com/e-faizov/yibana/internal/config"
 	"github.com/e-faizov/yibana/internal/interfaces"
 	"github.com/e-faizov/yibana/internal/server"
 	"github.com/e-faizov/yibana/internal/storage"
-	"log"
 )
 
 func main() {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Println("panic occurred:", err)
-		}
-	}()
 	cfg := config.GetServerConfig()
 
 	var store interfaces.Store
@@ -30,6 +25,6 @@ func main() {
 
 	err = server.StartServer(cfg.Address, store, cfg.Key)
 	if err != nil {
-		fmt.Println(err)
+		log.Error().Err(err).Msg("can't start server")
 	}
 }
