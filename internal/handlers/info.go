@@ -3,6 +3,8 @@ package handlers
 import (
 	"html/template"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 )
 
 var tmpl *template.Template
@@ -19,6 +21,7 @@ func (m *MetricsHandlers) Info(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	data, err := m.Store.GetAll(ctx)
 	if err != nil {
+		log.Error().Err(err).Msg("Info error parse float data type")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 	tmpl.Execute(w, data)

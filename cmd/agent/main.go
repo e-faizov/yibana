@@ -3,6 +3,8 @@ package main
 import (
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/e-faizov/yibana/internal"
 	"github.com/e-faizov/yibana/internal/config"
 )
@@ -32,7 +34,7 @@ func main() {
 			if len(batch) != 0 {
 				err := sender.SendMetrics(batch)
 				if err == nil {
-					metrics.Pop()
+					log.Error().Err(err).Msg("can't send metrics")
 				}
 			}
 		}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/rs/zerolog/log"
 
 	"github.com/e-faizov/yibana/internal"
 )
@@ -27,6 +28,7 @@ func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		log.Error().Err(err).Msg("PutJSON error read body")
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
@@ -34,6 +36,7 @@ func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		log.Error().Err(err).Msg("PutJSON error unmarshal body")
 		http.Error(w, "wrong body, not json", http.StatusBadRequest)
 		return
 	}
@@ -47,6 +50,7 @@ func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 
 	err = m.putMetric(ctx, data)
 	if err != nil {
+		log.Error().Err(err).Msg("PutJSON error save metrics")
 		http.Error(w, errSaveValue.Error(), http.StatusBadRequest)
 		return
 	}
@@ -56,17 +60,20 @@ func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		log.Error().Err(err).Msg("GetJSON error read body")
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		log.Error().Err(err).Msg("GetJSON error unmarshal body")
 		http.Error(w, "wrong body, not json", http.StatusBadRequest)
 		return
 	}
 	ret, ok, err := m.getValue(ctx, data.MType, data.ID)
 	if err != nil {
+		log.Error().Err(err).Msg("GetJSON error get data")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -130,6 +137,7 @@ func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	if tp == internal.GaugeType {
 		parsed, err := strconv.ParseFloat(value, 64)
 		if err != nil {
+			log.Error().Err(err).Msg("Post error parse float data type")
 			http.Error(w, errWrongValue.Error(), http.StatusBadRequest)
 			return
 		}
@@ -138,6 +146,7 @@ func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	} else if tp == internal.CounterType {
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
+			log.Error().Err(err).Msg("Post error parse int data type")
 			http.Error(w, errWrongValue.Error(), http.StatusBadRequest)
 			return
 		}
@@ -149,6 +158,7 @@ func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 
 	err := m.putMetric(ctx, data)
 	if err != nil {
+		log.Error().Err(err).Msg("Post error save data")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -161,6 +171,7 @@ func (m *MetricsHandlers) Get(w http.ResponseWriter, r *http.Request) {
 
 	val, ok, err := m.getValue(ctx, tp, name)
 	if err != nil {
+		log.Error().Err(err).Msg("Get error read data")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -176,6 +187,7 @@ func (m *MetricsHandlers) Get(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("%d", *val.Delta)))
 		return
 	default:
+		log.Error().Err(err).Msg("Get error wrong data type")
 		http.Error(w, "wrong path", http.StatusNotImplemented)
 		return
 	}

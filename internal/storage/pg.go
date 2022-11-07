@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -15,7 +16,7 @@ import (
 func createMetricsTable(ctx context.Context, db *sql.DB) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return internal.ErrorHelper(fmt.Errorf("error open Tx: %w", err))
 	}
 
 	sqlstring := `create table metrics
@@ -30,23 +31,23 @@ func createMetricsTable(ctx context.Context, db *sql.DB) error {
 	hash text
 )`
 
-	_, err = tx.ExecContext(ctx, sqlstring)
-	if err != nil {
+	rollback := func(err error) error {
 		errRoll := tx.Rollback()
 		if errRoll != nil {
-			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+			err = multierror.Append(err, fmt.Errorf("error on rollback %w", errRoll))
 		}
 		return err
+	}
+
+	_, err = tx.ExecContext(ctx, sqlstring)
+	if err != nil {
+		return internal.ErrorHelper(rollback(err))
 	}
 
 	sqlUnique := "create unique index metrics_id_uindex on metrics (id)"
 	_, err = tx.ExecContext(ctx, sqlUnique)
 	if err != nil {
-		errRoll := tx.Rollback()
-		if errRoll != nil {
-			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-		}
-		return err
+		return internal.ErrorHelper(rollback(err))
 	}
 	return tx.Commit()
 }
@@ -54,7 +55,7 @@ func createMetricsTable(ctx context.Context, db *sql.DB) error {
 func createMTypesTable(ctx context.Context, db *sql.DB) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return internal.ErrorHelper(fmt.Errorf("error open Tx: %w", err))
 	}
 
 	sqlCreate := `create table metric_types
@@ -68,46 +69,34 @@ func createMTypesTable(ctx context.Context, db *sql.DB) error {
 	add constraint metric_types_pk
 		primary key (mtid)`
 
-	_, err = tx.ExecContext(ctx, sqlCreate)
-	if err != nil {
+	rollback := func(err error) error {
 		errRoll := tx.Rollback()
 		if errRoll != nil {
-			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-		}
-		return err
-	}
-	_, err = tx.ExecContext(ctx, sqlIndex)
-	if err != nil {
-		errRoll := tx.Rollback()
-		if errRoll != nil {
-			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-		}
-		return err
-	}
-	_, err = tx.ExecContext(ctx, sqlAlter)
-	if err != nil {
-		errRoll := tx.Rollback()
-		if errRoll != nil {
-			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
+			err = multierror.Append(err, fmt.Errorf("error on rollback %w", errRoll))
 		}
 		return err
 	}
 
+	_, err = tx.ExecContext(ctx, sqlCreate)
+	if err != nil {
+		return internal.ErrorHelper(rollback(err))
+	}
+	_, err = tx.ExecContext(ctx, sqlIndex)
+	if err != nil {
+		return internal.ErrorHelper(rollback(err))
+	}
+	_, err = tx.ExecContext(ctx, sqlAlter)
+	if err != nil {
+		return internal.ErrorHelper(rollback(err))
+	}
+
 	_, err = tx.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.GaugeType))
 	if err != nil {
-		errRoll := tx.Rollback()
-		if errRoll != nil {
-			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-		}
-		return err
+		return internal.ErrorHelper(rollback(err))
 	}
 	_, err = tx.ExecContext(ctx, fmt.Sprintf("insert into metric_types (mtname) values ('%s')", internal.CounterType))
 	if err != nil {
-		errRoll := tx.Rollback()
-		if errRoll != nil {
-			err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-		}
-		return err
+		return internal.ErrorHelper(rollback(err))
 	}
 	return tx.Commit()
 }
@@ -157,14 +146,14 @@ func initTables(ctx context.Context, db *sql.DB) error {
 func NewPgStore(conn string) (interfaces.Store, error) {
 	db, err := sql.Open("postgres", conn)
 	if err != nil {
-		return nil, err
+		return nil, internal.ErrorHelper(fmt.Errorf("error open db: %w", err))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	err = initTables(ctx, db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error init tables: %w", err)
 	}
 
 	return &pgStore{
@@ -195,7 +184,15 @@ on conflict(id)
 
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return internal.ErrorHelper(fmt.Errorf("error open Tx: %w", err))
+	}
+
+	rollback := func(err error) error {
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			err = multierror.Append(err, fmt.Errorf("error on rollback %w", errRoll))
+		}
+		return internal.ErrorHelper(err)
 	}
 
 	var gaugeStmt, counterStmt *sql.Stmt
@@ -206,11 +203,7 @@ on conflict(id)
 			if gaugeStmt == nil {
 				gaugeStmt, err = tx.PrepareContext(ctx, sqlgauge)
 				if err != nil {
-					errRoll := tx.Rollback()
-					if errRoll != nil {
-						err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-					}
-					return err
+					return rollback(err)
 				}
 			}
 			curStmt = gaugeStmt
@@ -218,22 +211,14 @@ on conflict(id)
 			if counterStmt == nil {
 				counterStmt, err = tx.PrepareContext(ctx, sqlcounter)
 				if err != nil {
-					errRoll := tx.Rollback()
-					if errRoll != nil {
-						err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-					}
-					return err
+					return rollback(err)
 				}
 			}
 			curStmt = counterStmt
 		}
 		_, err = curStmt.ExecContext(ctx, metric.ID, metric.MType, metric.Value, metric.Delta, metric.Hash)
 		if err != nil {
-			errRoll := tx.Rollback()
-			if errRoll != nil {
-				err = fmt.Errorf("error when rollback %v, on err %v", errRoll, err)
-			}
-			return err
+			return internal.ErrorHelper(rollback(err))
 		}
 	}
 
