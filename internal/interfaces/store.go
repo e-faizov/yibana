@@ -1,9 +1,14 @@
 package interfaces
 
-import "github.com/e-faizov/yibana/internal"
+import (
+	"context"
+
+	"github.com/e-faizov/yibana/internal"
+)
 
 type Store interface {
-	SetMetric(metric internal.Metric) error
-	GetMetric(metric internal.Metric) (internal.Metric, bool)
-	GetAll() []internal.Metric
+	SetMetrics(ctx context.Context, metric []internal.Metric) error
+	GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error)
+	GetAll(ctx context.Context) ([]internal.Metric, error)
+	Ping() error
 }

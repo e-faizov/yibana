@@ -1,19 +1,29 @@
 package internal
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"fmt"
 	"math/rand"
 	"runtime"
 	"sync"
 )
 
-type NamedGauge struct {
-	Name  string
-	Value Gauge
+func CalcGaugeHash(id string, g Gauge, k string) string {
+	str := fmt.Sprintf("%s:gauge:%f", id, g)
+	hash := calcHash(str, k)
+	return hash
 }
 
-type NamedCounter struct {
-	Name  string
-	Value Counter
+func CalcCounterHash(id string, d Counter, k string) string {
+	return calcHash(fmt.Sprintf("%s:counter:%d", id, d), k)
+}
+
+func calcHash(s string, k string) string {
+	h := hmac.New(sha256.New, []byte(k))
+	h.Write([]byte(s))
+	hash := h.Sum(nil)
+	return fmt.Sprintf("%x", hash)
 }
 
 type Metric struct {
@@ -21,24 +31,45 @@ type Metric struct {
 	MType string   `json:"type"`
 	Delta *Counter `json:"delta,omitempty"`
 	Value *Gauge   `json:"value,omitempty"`
+	Hash  string   `json:"hash,omitempty"`
+}
+
+func (m Metric) String() string {
+	if m.MType == GaugeType && m.Value != nil {
+		return fmt.Sprintf("type: %s, name: %s, value: %f, hash: %s", m.MType, m.ID, *m.Value, m.Hash)
+	} else if m.MType == CounterType && m.Delta != nil {
+		return fmt.Sprintf("type: %s, name: %s, delta: %d, hash: %s", m.MType, m.ID, *m.Delta, m.Hash)
+	}
+	return "empty metric id: " + m.ID
 }
 
 func (m *Metric) SetGauge(g Gauge) {
 	m.Value = &g
 	m.Delta = nil
-	m.MType = "gauge"
+	m.MType = GaugeType
+}
+
+func (m *Metric) SetGaugeWithHash(g Gauge, key string) {
+	m.SetGauge(g)
+	m.Hash = CalcGaugeHash(m.ID, *m.Value, key)
 }
 
 func (m *Metric) SetCounter(c Counter) {
 	m.Value = nil
 	m.Delta = &c
-	m.MType = "counter"
+	m.MType = CounterType
+}
+
+func (m *Metric) SetCounterWithHash(c Counter, key string) {
+	m.SetCounter(c)
+	m.Hash = CalcCounterHash(m.ID, *m.Delta, key)
 }
 
 type Metrics struct {
 	mtx          sync.Mutex
 	data         []Metric
 	currentCount Counter
+	Key          string
 }
 
 func (m *Metrics) Update() {
@@ -53,7 +84,7 @@ func (m *Metrics) Update() {
 		tmpMetric := Metric{
 			ID: nm,
 		}
-		tmpMetric.SetGauge(v)
+		tmpMetric.SetGaugeWithHash(v, m.Key)
 		tmp = append(tmp, tmpMetric)
 	}
 
@@ -95,13 +126,24 @@ func (m *Metrics) Update() {
 	tmpMetric := Metric{
 		ID: "PollCount",
 	}
-	tmpMetric.SetCounter(m.currentCount)
+	tmpMetric.SetCounterWithHash(m.currentCount, m.Key)
 	tmp = append(tmp, tmpMetric)
 
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	m.data = append(m.data, tmp...)
+}
+
+func (m *Metrics) Batch() []Metric {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	if len(m.data) == 0 {
+		return []Metric{}
+	}
+	ret := m.data
+	m.data = make([]Metric, 0, 100)
+	return ret
 }
 
 func (m *Metrics) Front() (Metric, bool) {

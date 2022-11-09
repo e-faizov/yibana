@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/e-faizov/yibana/internal/interfaces"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -12,29 +11,35 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/e-faizov/yibana/internal"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/e-faizov/yibana/internal"
+	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
 type storeTest struct {
 	metric *internal.Metric
 }
 
-func (s *storeTest) SetMetric(metric internal.Metric) error {
-	s.metric = &metric
+func (s *storeTest) Ping() error {
 	return nil
 }
-func (s *storeTest) GetMetric(metric internal.Metric) (internal.Metric, bool) {
+
+func (s *storeTest) SetMetrics(ctx context.Context, metric []internal.Metric) error {
+	s.metric = &metric[0]
+	return nil
+}
+func (s *storeTest) GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
 	if s.metric == nil {
-		return internal.Metric{}, false
+		return internal.Metric{}, false, nil
 	}
-	return *s.metric, true
+	return *s.metric, true, nil
 }
 
-func (s *storeTest) GetAll() []internal.Metric {
-	return []internal.Metric{}
+func (s *storeTest) GetAll(ctx context.Context) ([]internal.Metric, error) {
+	return []internal.Metric{}, nil
 }
 
 var gStore storeTest
@@ -258,7 +263,7 @@ func TestMetricsHandlers_GetCounters(t *testing.T) {
 		ID: "testCounter",
 	}
 	metr.SetCounter(3534)
-	gStore.SetMetric(metr)
+	gStore.SetMetrics(context.Background(), []internal.Metric{metr})
 
 	type want struct {
 		statusCode int
@@ -357,7 +362,7 @@ func TestMetricsHandlers_GetGauges(t *testing.T) {
 		ID: "testGauges",
 	}
 	metr.SetGauge(3746.0)
-	gStore.SetMetric(metr)
+	gStore.SetMetrics(context.Background(), []internal.Metric{metr})
 
 	type want struct {
 		statusCode int

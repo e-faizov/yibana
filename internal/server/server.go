@@ -1,27 +1,33 @@
 package server
 
 import (
-	"github.com/e-faizov/yibana/internal/interfaces"
-	"github.com/e-faizov/yibana/internal/middlewares"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/e-faizov/yibana/internal/handlers"
+	"github.com/e-faizov/yibana/internal/interfaces"
+	"github.com/e-faizov/yibana/internal/middlewares"
 )
 
-func StartServer(adr string, store interfaces.Store) error {
+func StartServer(adr string, store interfaces.Store, key string) error {
 	h := handlers.MetricsHandlers{
 		Store: store,
+		Key:   key,
 	}
 
 	r := chi.NewRouter()
-	//r.Use(middleware.Compress(5))
 	r.Use(middlewares.Compress)
+	r.Use(middlewares.RequestLogger)
 	r.Get("/", h.Info)
+	r.Get("/ping", h.Ping)
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", h.PutJSON)
 		r.Post("/{type}/{name}/{value}", h.Post)
+	})
+
+	r.Route("/updates", func(r chi.Router) {
+		r.Post("/", h.PutsJSON)
 	})
 
 	r.Route("/value", func(r chi.Router) {

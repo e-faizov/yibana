@@ -6,4 +6,5 @@ import (
 
 type MetricsHandlers struct {
 	Store interfaces.Store
+	Key   string
 }
