@@ -18,13 +18,17 @@ func main() {
 	metrics := internal.Metrics{
 		Key: cfg.Key,
 	}
-	metrics.Update()
+	if err := metrics.Update(); err != nil {
+		log.Error().Err(err).Msg("error collection metrics")
+	}
 
 	sender := internal.NewSender(cfg.Address)
 
 	go func() {
 		for range pollTicker.C {
-			metrics.Update()
+			if err := metrics.Update(); err != nil {
+				log.Error().Err(err).Msg("error collection metrics")
+			}
 		}
 	}()
 

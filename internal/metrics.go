@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"fmt"
+	"github.com/shirou/gopsutil/v3/mem"
 	"math/rand"
 	"runtime"
 	"sync"
@@ -72,7 +73,7 @@ type Metrics struct {
 	Key          string
 }
 
-func (m *Metrics) Update() {
+func (m *Metrics) Update() error {
 
 	m.currentCount++
 	var tmp []Metric
@@ -129,10 +130,19 @@ func (m *Metrics) Update() {
 	tmpMetric.SetCounterWithHash(m.currentCount, m.Key)
 	tmp = append(tmp, tmpMetric)
 
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		return fmt.Errorf("update error mem.VirtualMemory %w", err)
+	}
+
+	addGauge("TotalMemory", Gauge(v.Total))
+	addGauge("FreeMemory", Gauge(v.Free))
+	addGauge("CPUutilization1", Gauge(v.UsedPercent))
+
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-
 	m.data = append(m.data, tmp...)
+	return nil
 }
 
 func (m *Metrics) Batch() []Metric {
