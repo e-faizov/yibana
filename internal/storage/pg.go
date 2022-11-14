@@ -107,10 +107,10 @@ func clearTable(db *sql.DB) {
 }
 
 func tableExist(ctx context.Context, db *sql.DB, tb string) bool {
-	sql := `SELECT EXISTS (
-	   SELECT FROM information_schema.tables
-	   WHERE  table_schema = 'public'
-	   AND    table_name   = $1
+	sql := `select exists (
+	   select from information_schema.tables
+	   where  table_schema = 'public'
+	   and    table_name   = $1
 	   )
 `
 
@@ -124,7 +124,6 @@ func tableExist(ctx context.Context, db *sql.DB, tb string) bool {
 }
 
 func initTables(ctx context.Context, db *sql.DB) error {
-	//clearTable(db)
 	var err error
 	exist := tableExist(ctx, db, "metric_types")
 	if !exist {
@@ -175,12 +174,12 @@ func (p *pgStore) SetMetrics(ctx context.Context, metrics []internal.Metric) err
 	}
 
 	sqlstring := `insert into metrics (id, mtid, value, delta, hash)
-values ($1, (select mtid from metric_types where mtname=$2), $3, $4, $5)
-on conflict(id)
-`
-	sqlgauge := sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=EXCLUDED.delta, hash=EXCLUDED.hash"
+			values ($1, (select mtid from metric_types where mtname=$2), $3, $4, $5)
+			on conflict(id)
+			`
+	sqlgauge := sqlstring + " do update set mtid=excluded.mtid, value=excluded.value, delta=excluded.delta, hash=excluded.hash"
 	//ToDo: решить проблему со сменой типа метрики, тогда metrics.delta=null и сумма не работает, пока в тз такого не было
-	sqlcounter := sqlstring + " do update set mtid=EXCLUDED.mtid, value=EXCLUDED.value, delta=metrics.delta+EXCLUDED.delta, hash=EXCLUDED.hash"
+	sqlcounter := sqlstring + " do update set mtid=excluded.mtid, value=excluded.value, delta=metrics.delta+excluded.delta, hash=excluded.hash"
 
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -227,9 +226,9 @@ on conflict(id)
 
 func (p *pgStore) GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
 	sqlstring := `select t1.id, t2.mtname, t1.value, t1.delta, t1.hash from metrics t1
-join metric_types t2
-on t2.mtid = t1.mtid
-where t1.id = $1 and t2.mtname = $2`
+			join metric_types t2
+			on t2.mtid = t1.mtid
+			where t1.id = $1 and t2.mtname = $2`
 
 	row := p.db.QueryRowContext(ctx, sqlstring, metric.ID, metric.MType)
 	var ret internal.Metric
@@ -249,8 +248,8 @@ where t1.id = $1 and t2.mtname = $2`
 
 func (p *pgStore) GetAll(ctx context.Context) ([]internal.Metric, error) {
 	sqlstring := `select t1.id, t1.mtid, t2.mtname, t1.value, t1.delta, t1.hash from metrics t1
-join metric_types t2
-on t2.mtid = t1.mtid`
+			join metric_types t2
+			on t2.mtid = t1.mtid`
 
 	var ret []internal.Metric
 
