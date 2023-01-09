@@ -37,7 +37,7 @@ func main() {
 			batch := metrics.Batch()
 			if len(batch) != 0 {
 				err := sender.SendMetrics(batch)
-				if err == nil {
+				if err != nil {
 					log.Error().Err(err).Msg("can't send metrics")
 				}
 			}

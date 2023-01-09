@@ -2,52 +2,75 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/e-faizov/yibana/internal"
-	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
+func serveHTTP(handler *chi.Mux, req *http.Request) *httptest.ResponseRecorder {
+	wr := httptest.NewRecorder()
+	handler.ServeHTTP(wr, req)
+	return wr
+}
+
 type storeTest struct {
-	metric *internal.Metric
+	setMetrics func(ctx context.Context, metric []internal.Metric) error
+	getMetric  func(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error)
+	getAll     func(ctx context.Context) ([]internal.Metric, error)
+	ping       func() error
+}
+
+func (s *storeTest) Clear() {
+	s.setMetrics = nil
+	s.getMetric = nil
+	s.getAll = nil
+	s.ping = nil
 }
 
 func (s *storeTest) Ping() error {
+	if s.ping != nil {
+		return s.ping()
+	}
 	return nil
 }
 
 func (s *storeTest) SetMetrics(ctx context.Context, metric []internal.Metric) error {
-	s.metric = &metric[0]
+	if s.setMetrics != nil {
+		return s.setMetrics(ctx, metric)
+	}
 	return nil
 }
 func (s *storeTest) GetMetric(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
-	if s.metric == nil {
-		return internal.Metric{}, false, nil
+	if s.getMetric != nil {
+		return s.getMetric(ctx, metric)
 	}
-	return *s.metric, true, nil
+	return internal.Metric{}, true, nil
 }
 
 func (s *storeTest) GetAll(ctx context.Context) ([]internal.Metric, error) {
+	if s.getAll != nil {
+		return s.getAll(ctx)
+	}
 	return []internal.Metric{}, nil
 }
-
-var gStore storeTest
 
 func newRouter(h *MetricsHandlers) *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/update", h.PutJSON)
 	r.Post("/value", h.GetJSON)
+
+	r.Get("/ping", h.Ping)
+
+	r.Route("/updates", func(r chi.Router) {
+		r.Post("/", h.PutsJSON)
+	})
 
 	r.Post("/update/{type}/{name}/{value}", h.Post)
 	r.Get("/value/{type}/{name}", h.Get)
@@ -55,348 +78,475 @@ func newRouter(h *MetricsHandlers) *chi.Mux {
 	return r
 }
 
-func testRequest(request *http.Request, store interfaces.Store) *http.Response {
-	h := MetricsHandlers{
-		Store: store,
+func TestGetJSON(t *testing.T) {
+	tStore := &storeTest{}
+
+	bl := MetricsHandlers{
+		Store: tStore,
 	}
-	request = request.WithContext(context.Background())
-	w := httptest.NewRecorder()
-	testHandle := newRouter(&h)
-	testHandle.ServeHTTP(w, request)
-	return w.Result()
-}
 
-func TestMetricsHandlers_Errors(t *testing.T) {
+	testRouter := newRouter(&bl)
 
-	type want struct {
-		statusCode int
-	}
-	var emptyStore storeTest
-
-	gaugeTestData :=
-		`{
-"id": "testg",
-"type": "gauge"
+	t.Run("Empty body", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader("")
+		req, err := http.NewRequest("POST", "/value", body)
+		if err != nil {
+			t.Fatal(err)
 		}
-`
 
-	counterTestData :=
-		`{
-"id": "testc",
-"type": "counter"
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
 		}
-`
+	})
 
-	tests := []struct {
-		name    string
-		request string
-		body    io.Reader
-		method  string
-		want    want
-	}{
-		{
-			name:    "unknown type",
-			request: "/update/unknown/test/1",
-			method:  http.MethodPost,
-			want: want{
-				statusCode: http.StatusNotImplemented,
-			},
-		},
-		{
-			name:    "gauge not found",
-			request: "/value/gauge/testg",
-			method:  http.MethodGet,
-			want: want{
-				statusCode: http.StatusNotFound,
-			},
-		},
-		{
-			name:    "gauge json not found",
-			request: "/value/",
-			body:    strings.NewReader(gaugeTestData),
-			method:  http.MethodGet,
-			want: want{
-				statusCode: http.StatusNotFound,
-			},
-		},
-		{
-			name:    "counter not found",
-			request: "/value/counter/testc",
-			method:  http.MethodGet,
-			want: want{
-				statusCode: http.StatusNotFound,
-			},
-		},
-		{
-			name:    "counter json not found",
-			request: "/value/",
-			body:    strings.NewReader(counterTestData),
-			method:  http.MethodGet,
-			want: want{
-				statusCode: http.StatusNotFound,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.method, tt.request, tt.body)
-			result := testRequest(request, &emptyStore)
+	t.Run("Body not json", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader("{]")
+		req, err := http.NewRequest("POST", "/value", body)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-			err := result.Body.Close()
-			require.NoError(t, err)
-		})
-	}
+		wr := serveHTTP(testRouter, req)
 
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
+	t.Run("Body empty json", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader("{}")
+		req, err := http.NewRequest("POST", "/value", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
+	t.Run("Not found", func(t *testing.T) {
+		tStore.Clear()
+		tStore.getMetric = func(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
+			return metric, false, nil
+		}
+
+		body := strings.NewReader(`
+{
+	"id": "test",
+	"type": "gauge"
+}
+`)
+		req, err := http.NewRequest("POST", "/value", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusNotFound {
+			t.Fatal("error, code not 404, code:", wr.Code)
+		}
+	})
+
+	t.Run("DB error", func(t *testing.T) {
+		tStore.Clear()
+		tStore.getMetric = func(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
+			return metric, true, errors.New("error")
+		}
+
+		body := strings.NewReader(`
+{
+	"id": "test",
+	"type": "gauge"
+}
+`)
+		req, err := http.NewRequest("POST", "/value", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
 }
 
-func TestMetricsHandlers_Counters(t *testing.T) {
-	type wantPost struct {
-		statusCode int
-		name       string
-		value      internal.Counter
+func TestPutJSON(t *testing.T) {
+	tStore := &storeTest{}
+
+	bl := MetricsHandlers{
+		Store: tStore,
 	}
 
-	type wantGet struct {
-		statusCode int
-		name       string
-		value      internal.Counter
-	}
+	testRouter := newRouter(&bl)
 
-	type wantGetJSON struct {
-		statusCode int
-		name       string
-		value      internal.Counter
-	}
+	t.Run("Empty body", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader("")
+		req, err := http.NewRequest("POST", "/update", body)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	key1 := "key1"
-	key1first := 1
-	key1second := 3242
+		wr := serveHTTP(testRouter, req)
 
-	tests := []struct {
-		name         string
-		request      string
-		method       string
-		gaugesData   map[string]internal.Gauge
-		countersData map[string]internal.Counter
-		want         interface{}
-	}{
-		{
-			name:    "set key1 first time",
-			request: fmt.Sprintf("/update/counter/%s/%d", key1, key1first),
-			method:  http.MethodPost,
-			want: wantPost{
-				statusCode: http.StatusOK,
-				name:       key1,
-				value:      internal.Counter(int64(key1first)),
-			},
-		},
-		{
-			name:    "get key1 first",
-			request: fmt.Sprintf("/value/counter/%s", key1),
-			method:  http.MethodGet,
-			want: wantGet{
-				statusCode: http.StatusOK,
-				value:      internal.Counter(int64(key1first)),
-			},
-		},
-		{
-			name:    "get key1 first",
-			request: fmt.Sprintf("/value/counter/%s", key1),
-			method:  http.MethodGet,
-			want: wantGet{
-				statusCode: http.StatusOK,
-				value:      internal.Counter(int64(key1first)),
-			},
-		},
-		{
-			name:    "set key1 by iter3 second time",
-			request: fmt.Sprintf("/update/counter/%s/%d", key1, key1second),
-			method:  http.MethodPost,
-			want: wantPost{
-				statusCode: http.StatusOK,
-				name:       key1,
-				value:      internal.Counter(int64(key1second)),
-			},
-		},
-		{
-			name:    "get key1 second",
-			request: fmt.Sprintf("/value/counter/%s", key1),
-			method:  http.MethodGet,
-			want: wantGet{
-				statusCode: http.StatusOK,
-				value:      internal.Counter(int64(key1second)),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
 
-			request := httptest.NewRequest(tt.method, tt.request, nil)
-			result := testRequest(request, &gStore)
+	t.Run("Body not json", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader("{]")
+		req, err := http.NewRequest("POST", "/update", body)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			switch want := tt.want.(type) {
-			case wantPost:
-				assert.Equal(t, want.statusCode, result.StatusCode)
-				err := result.Body.Close()
-				require.NoError(t, err)
-				assert.Equal(t, want.value, *gStore.metric.Delta)
-				assert.Equal(t, want.name, gStore.metric.ID)
+		wr := serveHTTP(testRouter, req)
 
-			case wantGet:
-				assert.Equal(t, want.statusCode, result.StatusCode)
-				raw, err := ioutil.ReadAll(result.Body)
-				require.NoError(t, err)
-				err = result.Body.Close()
-				require.NoError(t, err)
-				res, err := strconv.ParseFloat(string(raw), 64)
-				require.NoError(t, err)
-				assert.Equal(t, want.value, internal.Counter(res))
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
 
-			}
-		})
-	}
+	t.Run("Body empty json", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader("{}")
+		req, err := http.NewRequest("POST", "/update", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
+	t.Run("Body empty json", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader("{}")
+		req, err := http.NewRequest("POST", "/update", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
+	t.Run("OK without hash", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader(`
+{
+	"id": "test",
+	"type": "gauge",
+	"value": 100.1
+}
+`)
+		req, err := http.NewRequest("POST", "/update", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusOK {
+			t.Fatal("error, code not 200, code:", wr.Code)
+		}
+	})
+
+	t.Run("wrong hash", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader(`
+{
+	"id": "test",
+	"type": "gauge",
+	"value": 100.1,
+	"hash": "13swq"
+}
+`)
+		bl.Key = "test"
+		defer func() {
+			bl.Key = ""
+		}()
+		req, err := http.NewRequest("POST", "/update", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
+	t.Run("wrong hash", func(t *testing.T) {
+		tStore.Clear()
+		body := strings.NewReader(`
+{
+	"id": "test",
+	"type": "gauge",
+	"value": 100.1,
+	"hash": "1a19f1c2dc35b7f40501c6c0dcea030f7a6b731bc92870fe4710dc91f520c604"
+}
+`)
+		bl.Key = "test"
+		defer func() {
+			bl.Key = ""
+		}()
+		req, err := http.NewRequest("POST", "/update", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusOK {
+			t.Fatal("error, code not 200, code:", wr.Code)
+		}
+	})
 }
 
-func TestMetricsHandlers_GetCounters(t *testing.T) {
-	metr := internal.Metric{
-		ID: "testCounter",
-	}
-	metr.SetCounter(3534)
-	gStore.SetMetrics(context.Background(), []internal.Metric{metr})
+func TestGet(t *testing.T) {
+	tStore := &storeTest{}
 
-	type want struct {
-		statusCode int
-		value      string
+	bl := MetricsHandlers{
+		Store: tStore,
 	}
 
-	tests := []struct {
-		name    string
-		request string
-		want    want
-	}{
-		{
-			name:    "normal value",
-			request: "/value/counter/testCounter",
-			want: want{
-				statusCode: http.StatusOK,
-				value:      "3534",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
-			result := testRequest(request, &gStore)
+	testRouter := newRouter(&bl)
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-			res, err := ioutil.ReadAll(result.Body)
-			require.NoError(t, err)
-			err = result.Body.Close()
-			require.NoError(t, err)
+	t.Run("Wrong type", func(t *testing.T) {
+		tStore.Clear()
+		tStore.getMetric = func(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
+			var val internal.Gauge = 10.1
+			metric.Value = &val
+			return metric, true, nil
+		}
+		req, err := http.NewRequest("GET", "/value/wrong/type", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			if result.StatusCode == http.StatusOK {
-				assert.Equal(t, tt.want.value, string(res))
-			}
-		})
-	}
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusNotImplemented {
+			t.Fatal("error, code not 501, code:", wr.Code)
+		}
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		tStore.Clear()
+		tStore.getMetric = func(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
+			return internal.Metric{}, false, errors.New("error")
+		}
+		req, err := http.NewRequest("GET", "/value/"+internal.GaugeType+"/type", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusInternalServerError {
+			t.Fatal("error, code not 500, code:", wr.Code)
+		}
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		tStore.Clear()
+		tStore.getMetric = func(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
+			return metric, false, nil
+		}
+		req, err := http.NewRequest("GET", "/value/"+internal.GaugeType+"/type", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusNotFound {
+			t.Fatal("error, code not 404, code:", wr.Code)
+		}
+	})
+
+	t.Run("OK", func(t *testing.T) {
+		tStore.Clear()
+		tStore.getMetric = func(ctx context.Context, metric internal.Metric) (internal.Metric, bool, error) {
+			var val internal.Gauge = 10.1
+			metric.Value = &val
+			return metric, true, nil
+		}
+		req, err := http.NewRequest("GET", "/value/"+internal.GaugeType+"/type", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusOK {
+			t.Fatal("error, code not 200, code:", wr.Code)
+		}
+
+		body, err := io.ReadAll(wr.Body)
+		if err != nil {
+			t.Error("response error read body", err)
+			return
+		}
+
+		if string(body) != "10.100" {
+			t.Fatal("error, wrong value, body:", string(body))
+		}
+	})
 }
 
-func TestMetricsHandlers_Gauges(t *testing.T) {
-	type want struct {
-		statusCode int
-		gaugeName  string
-		gaugeValue internal.Gauge
+func TestPut(t *testing.T) {
+	tStore := &storeTest{}
+
+	bl := MetricsHandlers{
+		Store: tStore,
 	}
 
-	tests := []struct {
-		name    string
-		request string
-		want    want
-	}{
-		{
-			name:    "normal float value",
-			request: "/update/gauge/test/1.0",
-			want: want{
-				statusCode: http.StatusOK,
-				gaugeName:  "test",
-				gaugeValue: internal.Gauge(1.0),
-			},
-		},
-		{
-			name:    "normal int value",
-			request: "/update/gauge/test/1",
-			want: want{
-				statusCode: http.StatusOK,
-				gaugeName:  "test",
-				gaugeValue: internal.Gauge(1.0),
-			},
-		},
-		{
-			name:    "invalid value",
-			request: "/update/gauge/test/string",
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, tt.request, nil)
-			result := testRequest(request, &gStore)
+	testRouter := newRouter(&bl)
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-			err := result.Body.Close()
-			require.NoError(t, err)
+	t.Run("Wrong type", func(t *testing.T) {
+		tStore.Clear()
+		req, err := http.NewRequest("POST", "/update/wrong/type/test", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			if result.StatusCode == http.StatusOK {
-				assert.Equal(t, tt.want.gaugeValue, *gStore.metric.Value)
-				assert.Equal(t, tt.want.gaugeName, gStore.metric.ID)
-			}
-		})
-	}
-}
+		wr := serveHTTP(testRouter, req)
 
-func TestMetricsHandlers_GetGauges(t *testing.T) {
-	metr := internal.Metric{
-		ID: "testGauges",
-	}
-	metr.SetGauge(3746.0)
-	gStore.SetMetrics(context.Background(), []internal.Metric{metr})
+		if wr.Code != http.StatusNotImplemented {
+			t.Fatal("error, code not 501, code:", wr.Code)
+		}
+	})
 
-	type want struct {
-		statusCode int
-		value      string
-	}
+	t.Run("Gauge wrong type", func(t *testing.T) {
+		tStore.Clear()
+		req, err := http.NewRequest("POST", "/update/"+internal.GaugeType+"/test/value", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	tests := []struct {
-		name    string
-		request string
-		want    want
-	}{
-		{
-			name:    "normal value",
-			request: "/value/gauge/testGauges",
-			want: want{
-				statusCode: http.StatusOK,
-				value:      "3746.000",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
-			result := testRequest(request, &gStore)
+		wr := serveHTTP(testRouter, req)
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-			res, err := ioutil.ReadAll(result.Body)
-			require.NoError(t, err)
-			err = result.Body.Close()
-			require.NoError(t, err)
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
 
-			if result.StatusCode == http.StatusOK {
-				assert.Equal(t, tt.want.value, string(res))
-			}
-		})
-	}
+	t.Run("Gauge DB error", func(t *testing.T) {
+		tStore.Clear()
+		tStore.setMetrics = func(ctx context.Context, metric []internal.Metric) error {
+			return errors.New("error")
+		}
+		req, err := http.NewRequest("POST", "/update/"+internal.GaugeType+"/test/123.1", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
+	t.Run("Gauge OK float", func(t *testing.T) {
+		tStore.Clear()
+		tStore.setMetrics = func(ctx context.Context, metric []internal.Metric) error {
+			return nil
+		}
+		req, err := http.NewRequest("POST", "/update/"+internal.GaugeType+"/test/123.1", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusOK {
+			t.Fatal("error, code not 200, code:", wr.Code)
+		}
+	})
+
+	t.Run("Gauge OK int", func(t *testing.T) {
+		tStore.Clear()
+		tStore.setMetrics = func(ctx context.Context, metric []internal.Metric) error {
+			return nil
+		}
+		req, err := http.NewRequest("POST", "/update/"+internal.GaugeType+"/test/123", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusOK {
+			t.Fatal("error, code not 200, code:", wr.Code)
+		}
+	})
+
+	t.Run("Counter wrong types", func(t *testing.T) {
+		tStore.Clear()
+		req, err := http.NewRequest("POST", "/update/"+internal.CounterType+"/test/value", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
+	t.Run("Counter OK int", func(t *testing.T) {
+		tStore.Clear()
+		req, err := http.NewRequest("POST", "/update/"+internal.CounterType+"/test/10", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusOK {
+			t.Fatal("error, code not 200, code:", wr.Code)
+		}
+	})
+
+	t.Run("Counter DB error", func(t *testing.T) {
+		tStore.Clear()
+		tStore.setMetrics = func(ctx context.Context, metric []internal.Metric) error {
+			return errors.New("error")
+		}
+		req, err := http.NewRequest("POST", "/update/"+internal.CounterType+"/test/10", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wr := serveHTTP(testRouter, req)
+
+		if wr.Code != http.StatusBadRequest {
+			t.Fatal("error, code not 400, code:", wr.Code)
+		}
+	})
+
 }

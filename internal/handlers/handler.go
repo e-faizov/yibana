@@ -18,12 +18,17 @@ import (
 )
 
 var (
-	errNotFound    = errors.New("not found")
+	// errNotFound - ошибка отсутствия значения
+	errNotFound = errors.New("not found")
+	// errUnknownType - ошибка неверного типа
 	errUnknownType = errors.New("unknown type")
-	errWrongValue  = errors.New("wrong value")
-	errSaveValue   = errors.New("error on save value")
+	// errWrongValue - ошибка неверного значения
+	errWrongValue = errors.New("wrong value")
+	// errSaveValue - ошибка при сохранении значения
+	errSaveValue = errors.New("error on save value")
 )
 
+// PutJSON - обработчик сбора метрики в формате json
 func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body, err := io.ReadAll(r.Body)
@@ -56,6 +61,7 @@ func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetJSON - обработчик получения метрики в формате json
 func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body, err := io.ReadAll(r.Body)
@@ -94,6 +100,7 @@ func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, ret)
 }
 
+// putMetric - метод сохранения метрики в базу
 func (m *MetricsHandlers) putMetric(ctx context.Context, metric internal.Metric) error {
 	switch metric.MType {
 	case internal.GaugeType, internal.CounterType:
@@ -107,6 +114,7 @@ func (m *MetricsHandlers) putMetric(ctx context.Context, metric internal.Metric)
 	return nil
 }
 
+// getValue - метод получения метрики из базы
 func (m *MetricsHandlers) getValue(ctx context.Context, tp, key string) (internal.Metric, bool, error) {
 	ret := internal.Metric{
 		ID:    key,
@@ -124,6 +132,7 @@ func (m *MetricsHandlers) getValue(ctx context.Context, tp, key string) (interna
 	}
 }
 
+// Post - обработчик сохранения метрики, через строку запроса
 func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tp := strings.ToLower(chi.URLParam(r, "type"))
@@ -164,10 +173,15 @@ func (m *MetricsHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Get - обработчик получения метрики через строку запроса
 func (m *MetricsHandlers) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tp := strings.ToLower(chi.URLParam(r, "type"))
 	name := chi.URLParam(r, "name")
+	if tp != internal.GaugeType && tp != internal.CounterType {
+		http.Error(w, "wrong type", http.StatusNotImplemented)
+		return
+	}
 
 	val, ok, err := m.getValue(ctx, tp, name)
 	if err != nil {
