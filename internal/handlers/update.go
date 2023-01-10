@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/e-faizov/yibana/internal"
 )
 
+// PutsJSON - обработчик для сохранения списка метрик
 func (m *MetricsHandlers) PutsJSON(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body, err := io.ReadAll(r.Body)
@@ -28,6 +30,7 @@ func (m *MetricsHandlers) PutsJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(m.Key) != 0 {
+		fmt.Println(m.Key)
 		for _, metric := range data {
 			if !checkHash(m.Key, metric) {
 				log.Error().Err(err).
@@ -48,6 +51,7 @@ func (m *MetricsHandlers) PutsJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// checkHash - функция проверки хэша метрики
 func checkHash(key string, metric internal.Metric) bool {
 	if metric.MType == internal.GaugeType {
 		if metric.Hash != internal.CalcGaugeHash(metric.ID, *metric.Value, key) {

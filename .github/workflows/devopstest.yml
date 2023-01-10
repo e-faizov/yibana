@@ -127,8 +127,7 @@ jobs:
       - name: "Code increment #2"
         if: always()
         run: |
-          devopstest -test.v -test.run=^TestIteration2[b]*$ \
-            -source-path=. \
+          devopstest -test.v -test.run=^TestIteration2[b]*$ -source-path=. \
             -binary-path=cmd/server/server
 
 # III. Задание к третьему инкременту.
@@ -182,7 +181,7 @@ jobs:
       - name: "Code increment #5"
         if: always()
         run: |
-          SERVER_PORT=$(random unused-port)
+          SERVER_PORT=8081
           ADDRESS="localhost:${SERVER_PORT}"
           devopstest -test.v -test.run=^TestIteration5$ \
             -source-path=. \

@@ -142,6 +142,7 @@ func initTables(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+// NewPgStore - функция создания Pg хранилища
 func NewPgStore(conn string) (interfaces.Store, error) {
 	db, err := sql.Open("postgres", conn)
 	if err != nil {

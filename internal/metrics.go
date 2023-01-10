@@ -4,18 +4,21 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"fmt"
-	"github.com/shirou/gopsutil/v3/mem"
 	"math/rand"
 	"runtime"
 	"sync"
+
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
+// CalcGaugeHash - функция подсчета хэша для метрики с типом Gauge
 func CalcGaugeHash(id string, g Gauge, k string) string {
 	str := fmt.Sprintf("%s:gauge:%f", id, g)
 	hash := calcHash(str, k)
 	return hash
 }
 
+// CalcCounterHash - функция подсчета хэша для метрики с типом Counter
 func CalcCounterHash(id string, d Counter, k string) string {
 	return calcHash(fmt.Sprintf("%s:counter:%d", id, d), k)
 }
@@ -27,12 +30,18 @@ func calcHash(s string, k string) string {
 	return fmt.Sprintf("%x", hash)
 }
 
+// Metric - структура метрики
 type Metric struct {
-	ID    string   `json:"id"`
-	MType string   `json:"type"`
+	// ID - имя метрики
+	ID string `json:"id"`
+	// MType - тип метрик Counter или Gauge
+	MType string `json:"type"`
+	// Delta - значения для метрики типа Counter
 	Delta *Counter `json:"delta,omitempty"`
-	Value *Gauge   `json:"value,omitempty"`
-	Hash  string   `json:"hash,omitempty"`
+	// Value - значения для метрики типа Gauge
+	Value *Gauge `json:"value,omitempty"`
+	// Hash - хэш метрики
+	Hash string `json:"hash,omitempty"`
 }
 
 func (m Metric) String() string {
@@ -66,13 +75,16 @@ func (m *Metric) SetCounterWithHash(c Counter, key string) {
 	m.Hash = CalcCounterHash(m.ID, *m.Delta, key)
 }
 
+// Metrics - структура для сбора метрик
 type Metrics struct {
 	mtx          sync.Mutex
 	data         []Metric
 	currentCount Counter
-	Key          string
+	// Key - ключ для подписи метрики
+	Key string
 }
 
+// Update - метод сбора новых метрик
 func (m *Metrics) Update() error {
 
 	m.currentCount++
@@ -145,6 +157,7 @@ func (m *Metrics) Update() error {
 	return nil
 }
 
+// Batch - метод выделения метрик в отдельный слайс
 func (m *Metrics) Batch() []Metric {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -156,6 +169,7 @@ func (m *Metrics) Batch() []Metric {
 	return ret
 }
 
+// Front - метод чтения первой метрики в списке
 func (m *Metrics) Front() (Metric, bool) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -166,6 +180,7 @@ func (m *Metrics) Front() (Metric, bool) {
 	return m.data[0], true
 }
 
+// Pop - метод удаления первой метрики в списке
 func (m *Metrics) Pop() {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()

@@ -1,3 +1,4 @@
+// Package config - модуль для описания и  обработки конфигов риложений
 package config
 
 import (
@@ -7,11 +8,16 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// AgentConfig - конфиг для клиентского приложения
 type AgentConfig struct {
-	Address        string        `env:"ADDRESS"`
+	// Address - url сервиса сбора метрик
+	Address string `env:"ADDRESS"`
+	// ReportInterval - интервал отправки метрик
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL"`
-	Key            string        `env:"KEY"`
+	// PollInterval - интервал сбора метрик
+	PollInterval time.Duration `env:"POLL_INTERVAL"`
+	// Key - ключ хэширования
+	Key string `env:"KEY"`
 }
 
 var (

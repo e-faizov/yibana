@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/go-chi/chi/v5"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/e-faizov/yibana/internal/middlewares"
 )
 
+// StartServer - функция запуска сервера
 func StartServer(adr string, store interfaces.Store, key string) error {
 	h := handlers.MetricsHandlers{
 		Store: store,
@@ -19,6 +21,7 @@ func StartServer(adr string, store interfaces.Store, key string) error {
 	r := chi.NewRouter()
 	r.Use(middlewares.Compress)
 	r.Use(middlewares.RequestLogger)
+
 	r.Get("/", h.Info)
 	r.Get("/ping", h.Ping)
 	r.Route("/update", func(r chi.Router) {
