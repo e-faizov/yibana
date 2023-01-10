@@ -51,7 +51,6 @@ func NewMemStore(storeInterval time.Duration, storeFile string, restore bool) (i
 			}
 		}
 	}()
-
 	return res, nil
 }
 

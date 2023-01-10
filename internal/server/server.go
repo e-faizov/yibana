@@ -22,8 +22,6 @@ func StartServer(adr string, store interfaces.Store, key string) error {
 	r.Use(middlewares.Compress)
 	r.Use(middlewares.RequestLogger)
 
-	//r.Mount("/debug", middleware.Profiler())
-
 	r.Get("/", h.Info)
 	r.Get("/ping", h.Ping)
 	r.Route("/update", func(r chi.Router) {
