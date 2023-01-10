@@ -28,7 +28,7 @@ func GetServerConfig() ServerConfig {
 		flag.StringVar(&serverCfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "STORE_FILE")
 		flag.BoolVar(&serverCfg.Restore, "r", true, "RESTORE")
 		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
-		flag.StringVar(&serverCfg.DatabaseDsn, "d", "postgresql://postgresUser:postgresPW@localhost:5455/postgresDB?sslmode=disable", "KEY")
+		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
