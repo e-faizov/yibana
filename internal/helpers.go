@@ -5,6 +5,7 @@ import (
 	"runtime"
 )
 
+// ErrorHelper - функция добавления имени файла и строки к ошибке
 func ErrorHelper(err error) error {
 	if err == nil {
 		return err

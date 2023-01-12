@@ -8,11 +8,13 @@ import (
 	"net/http"
 )
 
+// Sender - структура для отправки метрик на сервер
 type Sender struct {
 	adr  string
 	port int64
 }
 
+// SendMetric - метод отправки одной метрики в формате json
 func (s *Sender) SendMetric(m Metric) error {
 	url := fmt.Sprintf("http://%s/update", s.adr)
 
@@ -24,6 +26,7 @@ func (s *Sender) SendMetric(m Metric) error {
 	return s.send(url, bd)
 }
 
+// SendMetrics - метод отправки списка метрик в формате json
 func (s *Sender) SendMetrics(m []Metric) error {
 	url := fmt.Sprintf("http://%s/updates", s.adr)
 
@@ -48,6 +51,7 @@ func (s *Sender) send(url string, data []byte) error {
 	return nil
 }
 
+// NewSender - функция создания нового объекта для отправки метрик
 func NewSender(adr string) Sender {
 	return Sender{
 		adr: adr,

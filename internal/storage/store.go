@@ -13,6 +13,7 @@ import (
 	"github.com/e-faizov/yibana/internal/interfaces"
 )
 
+// NewMemStore - функция создания in_memory хранилища
 func NewMemStore(storeInterval time.Duration, storeFile string, restore bool) (interfaces.Store, error) {
 	var sync bool
 	metrics := map[string]internal.Metric{}
@@ -50,7 +51,6 @@ func NewMemStore(storeInterval time.Duration, storeFile string, restore bool) (i
 			}
 		}
 	}()
-
 	return res, nil
 }
 
