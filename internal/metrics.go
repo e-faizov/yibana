@@ -85,7 +85,6 @@ type Metrics struct {
 
 // Update - метод сбора новых метрик
 func (m *Metrics) Update() error {
-
 	m.currentCount++
 	var tmp []Metric
 
