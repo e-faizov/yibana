@@ -77,16 +77,14 @@ func (m *Metric) SetCounterWithHash(c Counter, key string) {
 
 // Metrics - структура для сбора метрик
 type Metrics struct {
-	mtx          sync.Mutex
+	Key          string
 	data         []Metric
 	currentCount Counter
-	// Key - ключ для подписи метрики
-	Key string
+	mtx          sync.Mutex
 }
 
 // Update - метод сбора новых метрик
 func (m *Metrics) Update() error {
-
 	m.currentCount++
 	var tmp []Metric
 

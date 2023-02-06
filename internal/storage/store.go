@@ -55,11 +55,10 @@ func NewMemStore(storeInterval time.Duration, storeFile string, restore bool) (i
 }
 
 type memStore struct {
-	mtx     sync.RWMutex
-	metrics map[string]internal.Metric
-
-	storeInterval int
+	metrics       map[string]internal.Metric
 	storeFile     string
+	storeInterval int
+	mtx           sync.RWMutex
 	sync          bool
 }
 

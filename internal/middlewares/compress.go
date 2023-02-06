@@ -61,8 +61,8 @@ func (w *gzipWriter) Close() {
 }
 
 type gzWriters struct {
-	mtx     sync.Mutex
 	writers []*gzip.Writer
+	mtx     sync.Mutex
 }
 
 func (g *gzWriters) Pop() *gzip.Writer {

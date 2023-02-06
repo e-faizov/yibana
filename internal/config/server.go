@@ -9,11 +9,11 @@ import (
 
 type ServerConfig struct {
 	Address       string        `env:"ADDRESS"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
-	Restore       bool          `env:"RESTORE"`
 	Key           string        `env:"KEY"`
 	DatabaseDsn   string        `env:"DATABASE_DSN"`
+	StoreInterval time.Duration `env:"STORE_INTERVAL"`
+	Restore       bool          `env:"RESTORE"`
 }
 
 var (

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -9,7 +10,15 @@ import (
 	"github.com/e-faizov/yibana/internal/config"
 )
 
+var buildVersion = "N/A"
+var buildDate = "N/A"
+var buildCommit = "N/A"
+
 func main() {
+	fmt.Println("Build version:", buildVersion)
+	fmt.Println("Build date:", buildVersion)
+	fmt.Println("Build commit:", buildVersion)
+
 	cfg := config.GetAgentConfig()
 
 	pollTicker := time.NewTicker(cfg.PollInterval)

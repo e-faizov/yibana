@@ -10,14 +10,10 @@ import (
 
 // AgentConfig - конфиг для клиентского приложения
 type AgentConfig struct {
-	// Address - url сервиса сбора метрик
-	Address string `env:"ADDRESS"`
-	// ReportInterval - интервал отправки метрик
+	Address        string        `env:"ADDRESS"`
+	Key            string        `env:"KEY"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
-	// PollInterval - интервал сбора метрик
-	PollInterval time.Duration `env:"POLL_INTERVAL"`
-	// Key - ключ хэширования
-	Key string `env:"KEY"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 }
 
 var (

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/e-faizov/yibana/internal/config"
@@ -9,7 +11,15 @@ import (
 	"github.com/e-faizov/yibana/internal/storage"
 )
 
+var buildVersion = "N/A"
+var buildDate = "N/A"
+var buildCommit = "N/A"
+
 func main() {
+	fmt.Println("Build version:", buildVersion)
+	fmt.Println("Build date:", buildVersion)
+	fmt.Println("Build commit:", buildVersion)
+
 	cfg := config.GetServerConfig()
 
 	var store interfaces.Store
