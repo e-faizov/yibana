@@ -2,16 +2,21 @@ package internal
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // Sender - структура для отправки метрик на сервер
 type Sender struct {
-	adr  string
-	port int64
+	adr    string
+	port   int64
+	pubKey *rsa.PublicKey
 }
 
 // SendMetric - метод отправки одной метрики в формате json
@@ -52,8 +57,19 @@ func (s *Sender) send(url string, data []byte) error {
 }
 
 // NewSender - функция создания нового объекта для отправки метрик
-func NewSender(adr string) Sender {
+func NewSender(adr string, keyPath string) (Sender, error) {
+	bytes, err := os.ReadFile(keyPath)
+	if err != nil {
+		return Sender{}, err
+	}
+	pubKey, err := ssh.ParsePublicKey(bytes)
+	if err != nil {
+		return Sender{}, err
+	}
+
+	fmt.Println(pubKey.Type())
+
 	return Sender{
 		adr: adr,
-	}
+	}, nil
 }

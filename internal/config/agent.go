@@ -14,6 +14,7 @@ type AgentConfig struct {
 	Key            string        `env:"KEY"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	KeyPath        string        `env:"CRYPTO_KEY"`
 }
 
 var (
@@ -27,6 +28,7 @@ func GetAgentConfig() AgentConfig {
 		flag.DurationVar(&(agentCfg.ReportInterval), "r", time.Duration(10)*time.Second, "REPORT_INTERVAL")
 		flag.DurationVar(&(agentCfg.PollInterval), "p", time.Duration(2)*time.Second, "POLL_INTERVAL")
 		flag.StringVar(&(agentCfg.Key), "k", "", "KEY")
+		flag.StringVar(&serverCfg.DatabaseDsn, "crypto-key", "", "CRYPTO_KEY")
 
 		flag.Parse()
 		if err := env.Parse(&agentCfg); err != nil {

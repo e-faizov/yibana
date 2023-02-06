@@ -14,6 +14,7 @@ type ServerConfig struct {
 	DatabaseDsn   string        `env:"DATABASE_DSN"`
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	Restore       bool          `env:"RESTORE"`
+	KeyPath       string        `env:"CRYPTO_KEY"`
 }
 
 var (
@@ -29,6 +30,7 @@ func GetServerConfig() ServerConfig {
 		flag.BoolVar(&serverCfg.Restore, "r", true, "RESTORE")
 		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
 		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
+		flag.StringVar(&serverCfg.DatabaseDsn, "crypto-key", "", "CRYPTO_KEY")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
