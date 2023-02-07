@@ -33,7 +33,7 @@ func main() {
 		panic(err)
 	}
 
-	err = server.StartServer(cfg.Address, store, cfg.Key)
+	err = server.StartServer(cfg.Address, store, cfg.Key, cfg.KeyPath)
 	if err != nil {
 		log.Error().Err(err).Msg("can't start server")
 	}

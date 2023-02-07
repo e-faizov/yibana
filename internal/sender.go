@@ -2,14 +2,15 @@ package internal
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/e-faizov/yibana/internal/encryption"
 )
 
 // Sender - структура для отправки метрик на сервер
@@ -44,6 +45,11 @@ func (s *Sender) SendMetrics(m []Metric) error {
 }
 
 func (s *Sender) send(url string, data []byte) error {
+	var err error
+	if s.pubKey != nil {
+		hash := sha256.New()
+		data, err = encryption.EncryptOAEP(hash, rand.Reader, s.pubKey, data, nil)
+	}
 	resp, err := http.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return ErrorHelper(fmt.Errorf("error post data %w", err))
@@ -58,18 +64,19 @@ func (s *Sender) send(url string, data []byte) error {
 
 // NewSender - функция создания нового объекта для отправки метрик
 func NewSender(adr string, keyPath string) (Sender, error) {
-	bytes, err := os.ReadFile(keyPath)
-	if err != nil {
-		return Sender{}, err
-	}
-	pubKey, err := ssh.ParsePublicKey(bytes)
-	if err != nil {
-		return Sender{}, err
-	}
+	var rsaPubKey *rsa.PublicKey
+	if len(keyPath) != 0 {
+		var err error
+		rsaPubKey, err = encryption.ReadPubKey(keyPath)
+		if err != nil {
+			return Sender{}, err
+		}
 
-	fmt.Println(pubKey.Type())
+		fmt.Println(rsaPubKey)
+	}
 
 	return Sender{
-		adr: adr,
+		adr:    adr,
+		pubKey: rsaPubKey,
 	}, nil
 }

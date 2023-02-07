@@ -30,7 +30,7 @@ func GetServerConfig() ServerConfig {
 		flag.BoolVar(&serverCfg.Restore, "r", true, "RESTORE")
 		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
 		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
-		flag.StringVar(&serverCfg.DatabaseDsn, "crypto-key", "", "CRYPTO_KEY")
+		flag.StringVar(&serverCfg.KeyPath, "crypto-key", "", "CRYPTO_KEY")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {

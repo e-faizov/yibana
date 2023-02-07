@@ -31,7 +31,10 @@ func main() {
 		log.Error().Err(err).Msg("error collection metrics")
 	}
 
-	sender := internal.NewSender(cfg.Address)
+	sender, err := internal.NewSender(cfg.Address, cfg.KeyPath)
+	if err != nil {
+		panic(err)
+	}
 
 	go func() {
 		for range pollTicker.C {

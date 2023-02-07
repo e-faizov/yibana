@@ -4,21 +4,29 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/go-chi/chi/v5"
-
+	"github.com/e-faizov/yibana/internal/encryption"
 	"github.com/e-faizov/yibana/internal/handlers"
 	"github.com/e-faizov/yibana/internal/interfaces"
 	"github.com/e-faizov/yibana/internal/middlewares"
+	"github.com/go-chi/chi/v5"
 )
 
 // StartServer - функция запуска сервера
-func StartServer(adr string, store interfaces.Store, key string) error {
+func StartServer(adr string, store interfaces.Store, key string, keyPath string) error {
 	h := handlers.MetricsHandlers{
 		Store: store,
 		Key:   key,
 	}
 
 	r := chi.NewRouter()
+	if len(keyPath) != 0 {
+		privKey, err := encryption.ReadPrivKey(keyPath)
+		if err != nil {
+			return nil
+		}
+		r.Use(middlewares.DecryptFunc(privKey))
+	}
+
 	r.Use(middlewares.Compress)
 	r.Use(middlewares.RequestLogger)
 
