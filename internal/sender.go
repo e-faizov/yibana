@@ -49,6 +49,9 @@ func (s *Sender) send(url string, data []byte) error {
 	if s.pubKey != nil {
 		hash := sha256.New()
 		data, err = encryption.EncryptOAEP(hash, rand.Reader, s.pubKey, data, nil)
+		if err != nil {
+			return err
+		}
 	}
 	resp, err := http.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
