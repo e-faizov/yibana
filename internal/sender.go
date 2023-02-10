@@ -74,8 +74,6 @@ func NewSender(adr string, keyPath string) (Sender, error) {
 		if err != nil {
 			return Sender{}, err
 		}
-
-		fmt.Println(rsaPubKey)
 	}
 
 	return Sender{

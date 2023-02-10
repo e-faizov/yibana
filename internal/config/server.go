@@ -17,11 +17,10 @@ type ServerConfig struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	Restore       bool          `env:"RESTORE"`
 	KeyPath       string        `env:"CRYPTO_KEY"`
-	ConfigFile    string        `env:"CONFIG"`
 }
 
 type fileServerConfig struct {
-	Address       *string        `json:"address,omitempty""`
+	Address       *string        `json:"address,omitempty"`
 	Restore       *bool          `json:"restore,omitempty"`
 	StoreInterval *time.Duration `json:"store_interval,omitempty"`
 	StoreFile     *string        `json:"store_file,omitempty"`
@@ -45,10 +44,6 @@ func GetServerConfig() ServerConfig {
 		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
 		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
 		flag.StringVar(&serverCfg.KeyPath, "crypto-key", "", "CRYPTO_KEY")
-		flag.StringVar(&serverCfg.ConfigFile, "c", "", "CONFIG")
-		if len(serverCfg.ConfigFile) == 0 {
-			flag.StringVar(&serverCfg.ConfigFile, "config", "", "CONFIG")
-		}
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
