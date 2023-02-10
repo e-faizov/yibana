@@ -46,13 +46,15 @@ func main() {
 	wg.Add()
 	go func() {
 		defer wg.Done()
-		select {
-		case <-pollTicker.C:
-			if err := metrics.Update(); err != nil {
-				log.Error().Err(err).Msg("error collection metrics")
+		for {
+			select {
+			case <-pollTicker.C:
+				if err := metrics.Update(); err != nil {
+					log.Error().Err(err).Msg("error collection metrics")
+				}
+			case <-ctxStop.Done():
+				return
 			}
-		case <-ctxStop.Done():
-			return
 		}
 	}()
 
