@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	_ "net/http/pprof"
 
@@ -11,8 +12,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+type MetricsServer struct {
+	srv http.Server
+}
+
 // StartServer - функция запуска сервера
-func StartServer(adr string, store interfaces.Store, key string, keyPath string) error {
+func (m *MetricsServer) StartServer(adr string, store interfaces.Store, key string, keyPath string) error {
 	h := handlers.MetricsHandlers{
 		Store: store,
 		Key:   key,
@@ -45,6 +50,14 @@ func StartServer(adr string, store interfaces.Store, key string, keyPath string)
 		r.Post("/", h.GetJSON)
 		r.Get("/{type}/{name}", h.Get)
 	})
+	m.srv = http.Server{
+		Addr:    adr,
+		Handler: r,
+	}
 
-	return http.ListenAndServe(adr, r)
+	return m.srv.ListenAndServe()
+}
+
+func (m *MetricsServer) Shutdown(ctx context.Context) error {
+	return m.srv.Shutdown(ctx)
 }
