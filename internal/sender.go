@@ -53,10 +53,25 @@ func (s *Sender) send(url string, data []byte) error {
 			return err
 		}
 	}
-	resp, err := http.Post(url, "application/json", bytes.NewReader(data))
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
 	if err != nil {
-		return ErrorHelper(fmt.Errorf("error post data %w", err))
+		return err
 	}
+
+	localIP, err := getLocalAddress()
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Real-IP", localIP.String())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {

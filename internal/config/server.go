@@ -17,6 +17,7 @@ type ServerConfig struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	Restore       bool          `env:"RESTORE"`
 	KeyPath       string        `env:"CRYPTO_KEY"`
+	TrustedSubnet string        `env:"TRUSTED_SUBNET"`
 }
 
 type fileServerConfig struct {
@@ -26,6 +27,7 @@ type fileServerConfig struct {
 	StoreFile     *string        `json:"store_file,omitempty"`
 	DatabaseDsn   *string        `json:"database_dsn,omitempty"`
 	CryptoKey     *string        `json:"crypto_key,omitempty"`
+	TrustedSubnet *string        `json:"trusted_subnet,omitempty"`
 }
 
 var (
@@ -44,6 +46,7 @@ func GetServerConfig() ServerConfig {
 		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
 		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
 		flag.StringVar(&serverCfg.KeyPath, "crypto-key", "", "CRYPTO_KEY")
+		flag.StringVar(&serverCfg.TrustedSubnet, "-t", "", "TRUSTED_SUBNET")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
@@ -89,6 +92,10 @@ func readServerConfigFile() error {
 
 		if fCfg.StoreInterval != nil {
 			serverCfg.StoreInterval = *fCfg.StoreInterval
+		}
+
+		if fCfg.TrustedSubnet != nil {
+			serverCfg.TrustedSubnet = *fCfg.TrustedSubnet
 		}
 
 	}

@@ -46,7 +46,7 @@ func main() {
 	wg.Add()
 	go func() {
 		defer wg.Done()
-		err = srv.StartServer(cfg.Address, store, cfg.Key, cfg.KeyPath)
+		err = srv.StartServer(cfg, store)
 		if err != nil && err != http.ErrServerClosed {
 			log.Error().Err(err).Msg("can't start server")
 		}
