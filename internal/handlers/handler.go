@@ -70,6 +70,7 @@ func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
+	
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {

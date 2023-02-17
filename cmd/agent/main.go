@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/e-faizov/yibana/internal/wg"
 	"github.com/rs/zerolog/log"
 
 	"github.com/e-faizov/yibana/internal"
@@ -31,17 +35,42 @@ func main() {
 		log.Error().Err(err).Msg("error collection metrics")
 	}
 
-	sender := internal.NewSender(cfg.Address)
+	sender, err := internal.NewSender(cfg.Address, cfg.KeyPath)
+	if err != nil {
+		panic(err)
+	}
 
+	ctxStop, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+
+	wg.Add()
 	go func() {
-		for range pollTicker.C {
-			if err := metrics.Update(); err != nil {
-				log.Error().Err(err).Msg("error collection metrics")
+		defer wg.Done()
+		for {
+			select {
+			case <-pollTicker.C:
+				if err := metrics.Update(); err != nil {
+					log.Error().Err(err).Msg("error collection metrics")
+				}
+			case <-ctxStop.Done():
+				return
 			}
 		}
 	}()
 
-	for range reportTicker.C {
+LOOP:
+	for {
+		var done bool
+		select {
+		case <-ctxStop.Done():
+			done = true
+		case <-reportTicker.C:
+		}
+
+		if done {
+			wg.Wait()
+		}
+
 		for {
 			batch := metrics.Batch()
 			if len(batch) != 0 {
@@ -49,7 +78,15 @@ func main() {
 				if err != nil {
 					log.Error().Err(err).Msg("can't send metrics")
 				}
+			} else {
+				if done {
+					break LOOP
+				} else {
+					break
+				}
 			}
 		}
 	}
+
+	wg.Wait()
 }

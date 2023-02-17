@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"os/signal"
+	"syscall"
 
+	"github.com/e-faizov/yibana/internal/wg"
 	"github.com/rs/zerolog/log"
 
 	"github.com/e-faizov/yibana/internal/config"
@@ -33,8 +38,25 @@ func main() {
 		panic(err)
 	}
 
-	err = server.StartServer(cfg.Address, store, cfg.Key)
+	ctxStop, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+
+	var srv server.MetricsServer
+
+	wg.Add()
+	go func() {
+		defer wg.Done()
+		err = srv.StartServer(cfg.Address, store, cfg.Key, cfg.KeyPath)
+		if err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("can't start server")
+		}
+	}()
+
+	<-ctxStop.Done()
+	err = srv.Shutdown(ctxStop)
 	if err != nil {
-		log.Error().Err(err).Msg("can't start server")
+		panic(err)
 	}
+
+	wg.Wait()
 }

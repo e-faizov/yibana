@@ -1,24 +1,37 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/go-chi/chi/v5"
-
+	"github.com/e-faizov/yibana/internal/encryption"
 	"github.com/e-faizov/yibana/internal/handlers"
 	"github.com/e-faizov/yibana/internal/interfaces"
 	"github.com/e-faizov/yibana/internal/middlewares"
+	"github.com/go-chi/chi/v5"
 )
 
+type MetricsServer struct {
+	srv http.Server
+}
+
 // StartServer - функция запуска сервера
-func StartServer(adr string, store interfaces.Store, key string) error {
+func (m *MetricsServer) StartServer(adr string, store interfaces.Store, key string, keyPath string) error {
 	h := handlers.MetricsHandlers{
 		Store: store,
 		Key:   key,
 	}
 
 	r := chi.NewRouter()
+	if len(keyPath) != 0 {
+		privKey, err := encryption.ReadPrivKey(keyPath)
+		if err != nil {
+			return nil
+		}
+		r.Use(middlewares.DecryptFunc(privKey))
+	}
+
 	r.Use(middlewares.Compress)
 	r.Use(middlewares.RequestLogger)
 
@@ -37,6 +50,14 @@ func StartServer(adr string, store interfaces.Store, key string) error {
 		r.Post("/", h.GetJSON)
 		r.Get("/{type}/{name}", h.Get)
 	})
+	m.srv = http.Server{
+		Addr:    adr,
+		Handler: r,
+	}
 
-	return http.ListenAndServe(adr, r)
+	return m.srv.ListenAndServe()
+}
+
+func (m *MetricsServer) Shutdown(ctx context.Context) error {
+	return m.srv.Shutdown(ctx)
 }
