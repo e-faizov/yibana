@@ -46,7 +46,7 @@ func GetServerConfig() ServerConfig {
 		flag.StringVar(&serverCfg.Key, "k", "", "KEY")
 		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
 		flag.StringVar(&serverCfg.KeyPath, "crypto-key", "", "CRYPTO_KEY")
-		flag.StringVar(&serverCfg.TrustedSubnet, "-t", "", "TRUSTED_SUBNET")
+		flag.StringVar(&serverCfg.TrustedSubnet, "t", "", "TRUSTED_SUBNET")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
