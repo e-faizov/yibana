@@ -62,7 +62,7 @@ func main() {
 			log.Error().Err(err).Msg("can't start grpc server")
 			return
 		}
-		grpcSrv := grpc.NewServer()
+		grpcSrv = grpc.NewServer()
 		proto.RegisterMetricsServiceServer(grpcSrv, &server.ProtoMetrics{
 			Store: store,
 			Key:   cfg.Key,
