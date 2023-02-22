@@ -47,7 +47,7 @@ func (m *MetricsHandlers) PutJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(m.Key) != 0 {
-		if !checkHash(m.Key, data) {
+		if !internal.CheckHash(m.Key, data) {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
@@ -70,7 +70,7 @@ func (m *MetricsHandlers) GetJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "wrong body", http.StatusBadRequest)
 		return
 	}
-	
+
 	var data internal.Metric
 	err = json.Unmarshal(body, &data)
 	if err != nil {

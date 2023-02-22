@@ -11,6 +11,20 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
+// checkHash - функция проверки хэша метрики
+func CheckHash(key string, metric Metric) bool {
+	if metric.MType == GaugeType {
+		if metric.Hash != CalcGaugeHash(metric.ID, *metric.Value, key) {
+			return false
+		}
+	} else {
+		if metric.Hash != CalcCounterHash(metric.ID, *metric.Delta, key) {
+			return false
+		}
+	}
+	return true
+}
+
 // CalcGaugeHash - функция подсчета хэша для метрики с типом Gauge
 func CalcGaugeHash(id string, g Gauge, k string) string {
 	str := fmt.Sprintf("%s:gauge:%f", id, g)

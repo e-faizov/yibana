@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env/v7"
 )
 
 type ServerConfig struct {
@@ -18,6 +18,7 @@ type ServerConfig struct {
 	Restore       bool          `env:"RESTORE"`
 	KeyPath       string        `env:"CRYPTO_KEY"`
 	TrustedSubnet string        `env:"TRUSTED_SUBNET"`
+	GRPCPort      string        `env:"GRPC_PORT"`
 }
 
 type fileServerConfig struct {
@@ -28,6 +29,7 @@ type fileServerConfig struct {
 	DatabaseDsn   *string        `json:"database_dsn,omitempty"`
 	CryptoKey     *string        `json:"crypto_key,omitempty"`
 	TrustedSubnet *string        `json:"trusted_subnet,omitempty"`
+	GRPCPort      *string        `json:"grpc_port,omitempty"`
 }
 
 var (
@@ -47,6 +49,7 @@ func GetServerConfig() ServerConfig {
 		flag.StringVar(&serverCfg.DatabaseDsn, "d", "", "KEY")
 		flag.StringVar(&serverCfg.KeyPath, "crypto-key", "", "CRYPTO_KEY")
 		flag.StringVar(&serverCfg.TrustedSubnet, "t", "", "TRUSTED_SUBNET")
+		flag.StringVar(&serverCfg.GRPCPort, "gp", "", "GRPC_PORT")
 
 		flag.Parse()
 		if err := env.Parse(&serverCfg); err != nil {
@@ -70,32 +73,19 @@ func readServerConfigFile() error {
 			return err
 		}
 
-		if fCfg.Address != nil {
-			serverCfg.Address = *fCfg.Address
-		}
-
-		if fCfg.CryptoKey != nil {
-			serverCfg.Key = *fCfg.CryptoKey
-		}
-
-		if fCfg.StoreFile != nil {
-			serverCfg.StoreFile = *fCfg.StoreFile
-		}
+		copyIfEnable(&serverCfg.Address, fCfg.Address)
+		copyIfEnable(&serverCfg.Key, fCfg.CryptoKey)
+		copyIfEnable(&serverCfg.StoreFile, fCfg.StoreFile)
+		copyIfEnable(&serverCfg.DatabaseDsn, fCfg.DatabaseDsn)
+		copyIfEnable(&serverCfg.TrustedSubnet, fCfg.TrustedSubnet)
+		copyIfEnable(&serverCfg.GRPCPort, fCfg.GRPCPort)
 
 		if fCfg.Restore != nil {
 			serverCfg.Restore = *fCfg.Restore
 		}
 
-		if fCfg.DatabaseDsn != nil {
-			serverCfg.DatabaseDsn = *fCfg.DatabaseDsn
-		}
-
 		if fCfg.StoreInterval != nil {
 			serverCfg.StoreInterval = *fCfg.StoreInterval
-		}
-
-		if fCfg.TrustedSubnet != nil {
-			serverCfg.TrustedSubnet = *fCfg.TrustedSubnet
 		}
 
 	}

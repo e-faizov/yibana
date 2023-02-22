@@ -35,7 +35,14 @@ func main() {
 		log.Error().Err(err).Msg("error collection metrics")
 	}
 
-	sender, err := internal.NewSender(cfg.Address, cfg.KeyPath)
+	var sender internal.Sender
+	var err error
+
+	if len(cfg.GRPCAddress) != 0 {
+		sender, err = internal.NewGRPCSender(cfg.GRPCAddress)
+	} else {
+		sender, err = internal.NewHTTPSender(cfg.Address, cfg.KeyPath)
+	}
 	if err != nil {
 		panic(err)
 	}

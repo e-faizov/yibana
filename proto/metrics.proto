@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package demo;
+
+option go_package = "internal/proto";
+
+message Metric {
+  string id = 1;
+  enum Type {
+    GAUGE = 0;
+    COUNTER = 1;
+  }
+  Type mType = 2;
+  optional int64 delta = 3;
+  optional double value = 4;
+  string hash = 5;
+}
+
+message Metrics {
+  repeated Metric data = 1;
+}
+
+message AddMetricResponse {
+  string error = 1;
+}
+
+message GetMetricResponse {
+  Metric data = 1;
+  string error = 2;
+}
+
+service MetricsService {
+  rpc AddMetric(Metric) returns (AddMetricResponse);
+  rpc AddMetrics(Metrics) returns (AddMetricResponse);
+  rpc GetMetric(Metric) returns (GetMetricResponse);
+}
