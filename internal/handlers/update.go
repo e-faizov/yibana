@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -30,10 +29,9 @@ func (m *MetricsHandlers) PutsJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(m.Key) != 0 {
-		fmt.Println(m.Key)
 		for _, metric := range data {
-			if !checkHash(m.Key, metric) {
-				log.Error().Err(err).
+			if !internal.CheckHash(m.Key, metric) {
+				log.Error().
 					Str("hash", metric.Hash).
 					Str("id", metric.ID).
 					Msg("PutsJSON error wrong hash")
@@ -49,18 +47,4 @@ func (m *MetricsHandlers) PutsJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errSaveValue.Error(), http.StatusBadRequest)
 		return
 	}
-}
-
-// checkHash - функция проверки хэша метрики
-func checkHash(key string, metric internal.Metric) bool {
-	if metric.MType == internal.GaugeType {
-		if metric.Hash != internal.CalcGaugeHash(metric.ID, *metric.Value, key) {
-			return false
-		}
-	} else {
-		if metric.Hash != internal.CalcCounterHash(metric.ID, *metric.Delta, key) {
-			return false
-		}
-	}
-	return true
 }

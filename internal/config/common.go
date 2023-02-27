@@ -18,3 +18,9 @@ func getConfigFilePath() string {
 	}
 	return configFile
 }
+
+func copyIfEnable(dst *string, src *string) {
+	if src != nil {
+		*dst = *src
+	}
+}

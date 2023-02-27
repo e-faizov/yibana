@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
 
 	"github.com/e-faizov/yibana/internal/wg"
+	"github.com/e-faizov/yibana/proto"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc"
 
 	"github.com/e-faizov/yibana/internal/config"
 	"github.com/e-faizov/yibana/internal/interfaces"
@@ -42,20 +45,48 @@ func main() {
 	defer stop()
 
 	var srv server.MetricsServer
+	var grpcSrv *grpc.Server
 
 	wg.Add()
 	go func() {
 		defer wg.Done()
-		err = srv.StartServer(cfg.Address, store, cfg.Key, cfg.KeyPath)
+		err = srv.StartServer(cfg, store)
 		if err != nil && err != http.ErrServerClosed {
 			log.Error().Err(err).Msg("can't start server")
 		}
 	}()
 
+	if len(cfg.GRPCPort) != 0 {
+		listen, err := net.Listen("tcp", ":"+cfg.GRPCPort)
+		if err != nil {
+			log.Error().Err(err).Msg("can't start grpc server")
+			return
+		}
+		grpcSrv = grpc.NewServer()
+		proto.RegisterMetricsServiceServer(grpcSrv, &server.ProtoMetrics{
+			Store: store,
+			Key:   cfg.Key,
+		})
+
+		wg.Add()
+		go func() {
+			defer wg.Done()
+
+			if err := grpcSrv.Serve(listen); err != nil {
+				log.Error().Err(err).Msg("can't Serve grpc server")
+				return
+			}
+		}()
+	}
+
 	<-ctxStop.Done()
 	err = srv.Shutdown(ctxStop)
 	if err != nil {
 		panic(err)
+	}
+
+	if grpcSrv != nil {
+		grpcSrv.GracefulStop()
 	}
 
 	wg.Wait()

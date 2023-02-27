@@ -17,6 +17,7 @@ type AgentConfig struct {
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 	KeyPath        string        `env:"CRYPTO_KEY"`
+	GRPCAddress    string        `env:"GRPC_ADDRESS"`
 }
 
 var (
@@ -29,6 +30,7 @@ type fileAgentConfig struct {
 	ReportInterval *time.Duration `json:"report_interval,omitempty"`
 	PollInterval   *time.Duration `json:"poll_interval,omitempty"`
 	CryptoKey      *string        `json:"crypto_key,omitempty"`
+	GRPCAddress    *string        `json:"grps_address,omitempty"`
 }
 
 func GetAgentConfig() AgentConfig {
@@ -40,6 +42,7 @@ func GetAgentConfig() AgentConfig {
 		flag.DurationVar(&(agentCfg.PollInterval), "p", time.Duration(2)*time.Second, "POLL_INTERVAL")
 		flag.StringVar(&(agentCfg.Key), "k", "", "KEY")
 		flag.StringVar(&agentCfg.KeyPath, "crypto-key", "", "CRYPTO_KEY")
+		flag.StringVar(&agentCfg.GRPCAddress, "ga", "", "GRPC_ADDRESS")
 
 		flag.Parse()
 		if err := env.Parse(&agentCfg); err != nil {
@@ -64,9 +67,9 @@ func readAgentConfigFile() error {
 			return err
 		}
 
-		if fCfg.Address != nil {
-			agentCfg.Address = *fCfg.Address
-		}
+		copyIfEnable(&agentCfg.Address, fCfg.Address)
+		copyIfEnable(&agentCfg.Key, fCfg.CryptoKey)
+		copyIfEnable(&agentCfg.GRPCAddress, fCfg.GRPCAddress)
 
 		if fCfg.ReportInterval != nil {
 			agentCfg.ReportInterval = *fCfg.ReportInterval
@@ -74,10 +77,6 @@ func readAgentConfigFile() error {
 
 		if fCfg.PollInterval != nil {
 			agentCfg.PollInterval = *fCfg.PollInterval
-		}
-
-		if fCfg.CryptoKey != nil {
-			agentCfg.Key = *fCfg.CryptoKey
 		}
 
 	}
